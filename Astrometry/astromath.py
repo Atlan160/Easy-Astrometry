@@ -46,7 +46,7 @@ def return_coordinates_RA_DEC(header, x,y):
     RAnew=np.zeros_like(x)
     DECnew=np.zeros_like(y)
 
-    for i in range(len(RAnew)):
+    for i in range(len(RAnew)): #ranew and decnew are arrays with length of number of stars
 
         RAnew[i]=c11*(x[i]-xref)+c12*(y[i]-yref)+RAref
         DECnew[i]=c21*(x[i]-xref)+c22*(y[i]-yref)+DECref
@@ -59,5 +59,16 @@ def return_coordinates_RA_DEC(header, x,y):
 def return_distance_arsec(ra1, dec1, ra2,dec2):
     return math.sqrt((ra1-ra2)**2+(dec1-dec2)**2)*3600
 
-def return_pixel_distance(x1,y1,x2,y2):
+def return_distance_pixel(x1,y1,x2,y2):
     return math.sqrt((x1-x2)**2+(y1-y2)**2)
+
+
+def get_image_with_highest_index(sources):
+    max=0
+    index=0
+    for i in range(len(sources)):
+        number=len(sources[i]['id'])
+        if number>max:
+            index=i
+    
+    return index
