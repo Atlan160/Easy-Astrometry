@@ -76,6 +76,11 @@ class astrometry:
         self.moving_star_tolerance=moving_star_tolerance
 
     def plot_all_sources(self):
+        """
+        This method plots all images that have been imported with its found stars
+        
+        """
+
 
         for i,fi in enumerate(self.lights_path):
             light=fits.open(fi)
@@ -107,17 +112,24 @@ class astrometry:
         plt.show()
                 
     def test_plot(self,file_number):
+        """Plot only the image with the given filenumber
+
+        Args:
+            file_number (int): number of file to plot
+        """
 
         light=fits.open(self.lights_path[file_number])
         data=light[0].data
         _mean, median, std = sigma_clipped_stats(data, sigma=self.sigma) #get data statistic
         #calibration
         if self.perform_dark_correction:
+            print("dark",self.dark_path)
             dark=fits.open(self.dark_path)
             dark_data=dark[0].data
             data=self.dark_correction(data,dark_data)
         else:
             data=self.median_correction(data,median)
+
         daofind = DAOStarFinder(fwhm=self.fwhm, threshold=self.threshold*std)
         sources=daofind(data)
         positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
@@ -132,7 +144,17 @@ class astrometry:
         plt.show()
 
 
-    def find_sources(self,save_files=True): #easy to run in parallel mode
+    def find_sources(self,save_files=True): 
+        """searches for stars in the loaded images. The sources are searched via DAOStarFinder.
+           stars are saved in sources_list. Beforehands a calibration is done if activated.
+           if save_files is True then the stars with its properties are also saved to a file.
+
+        Args:
+            save_files (bool): Decides if found stars are also written to file. Defaults to True.
+
+        Returns:
+            sources_list [list]: list of found stars. structure is sources_list[filenumber][starnumber]
+        """
 
         sources_list=[]
         _found=False
@@ -187,7 +209,7 @@ class astrometry:
             del sources['sky']; del sources['roundness1']
             del sources['roundness2']; del sources['npix']; del sources['sharpness']
 
-            sources_list.append(sources) #write into an array
+            sources_list.append(sources) #write found stars of file into list
             
             if save_files==True:
         
@@ -199,18 +221,11 @@ class astrometry:
 
 
 
-        ###preprocessing
-        # x_ref=sources_list[0]['xcentroid'][0]
-        # y_ref=sources_list[0]['ycentroid'][0]
-        # x=sources_list[1]['xcentroid'][0]
-        # y=sources_list[1]['ycentroid'][0]
-
-        # print("distance",astromath.return_pixel_distance(x_ref,y_ref,x,y))
-
-        # print("done")
-        #find same stars
-
     def search_for_moving_stars(self):
+        """
+        currently under development. not finished yet.
+
+        """
         print("in search for moving stars")
         #star_list[star][file] type: star.star object
         ref_star_ID=-1 #error if not found
@@ -253,6 +268,10 @@ class astrometry:
 
 
     def search_same_stars(self):
+        """
+        This method searches for the same stars in different files and relates them.
+        
+        """
 
         self.star_list=[] #reset list
         # _number=0

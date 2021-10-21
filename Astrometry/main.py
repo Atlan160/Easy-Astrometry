@@ -31,11 +31,6 @@ from tkinter import *
 from tkinter import filedialog
 from tkinter import messagebox
 
-# TODO implement dark correction correctly
-# TODO create new folder when data_stars folder doesnt exist
-# TODO take middle light as reference frame (regarding time), so that moving targets can be easier spottet
-# TODO ERROR if stars in reference image are less than stars in other files 
-
 ametry=astrometry.astrometry()
 scopy=spectroscopy.spectroscopy()
 
@@ -51,7 +46,7 @@ def open_lights():
 
     try:
         lights_path=filedialog.askopenfilenames(initialdir =" ", title = "Select light files",filetypes = (("newly solved files",".new"),("fit files","*.fit"),("fits files","*.fits")))
-        #print(lights_path)
+        print(lights_path)
         ametry.set_light_path(lights_path)
         scopy.set_light_path(lights_path)
         messagebox.showinfo("success","imported "+str(len(lights_path))+" files.")
@@ -59,9 +54,11 @@ def open_lights():
     except:
         messagebox.showerror("Error", "something went wrong importing light files")
         #root.mainloop()
+
 def open_dark():
     try:
-        dark_path=filedialog.askopenfile(initialdir= " ", title ="Select dark file", filetypes = (("fit files","*.fit"),("fits file","*.fits")) )
+        dark_path=filedialog.askopenfile(initialdir= " ",title ="Select dark file", filetypes = (("fit files","*.fit"),("fits file","*.fits")) )
+        print(dark_path)
         if dark_path == "":
             messagebox.showinfo(" ","imported no files, median correction will then be done")
         else:
