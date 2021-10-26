@@ -34,38 +34,47 @@ from tkinter import messagebox
 
 class spectroscopy:
 
+    #TODO rework importing of data like in astrometry.py
+
+
     def __init__(self):
         self.dark_path="" #is imported 
         self.lights_path="" #is imported
-        self.data=[]
+        self.headers=[]
+        self.lights=[]
 
 
-    def set_light_path(self,path):
-        self.lights_path=path
+    def import_lights(self,path):
+        _lights=[]
+        _headers=[]
+        self.lights_path=path #import paths
 
-    def set_dark_path(self,path):
-        self.dark_path=path
-        self.perform_dark_correction=True
+        for fi in path:
+            file=fits.open(fi)
+            _lights.append(file[0].data)
+            _headers.append(file[0].header)
+        self.lights=_lights
+        self.headers=_headers
 
-    def dark_correction(self, data,dark):
-        return data-dark
+    def import_dark(self,path):
+        file=fits.open(path)
+        self.dark=file[0].data
+
+    def perform_dark_correction(self):
+        for i in range(len(self.lights)):
+            self.lights[i]=self.lights[i]-self.dark
 
 
     def show_spectra(self):
 
-        light=fits.open(self.lights_path)
-        self.data=light[0].data
-        print("shape:",np.shape(self.data))
+        print("shape:",np.shape(self.lights[0]))
         plt.figure(1)
-        plt.title(os.path.basename(self.lights_path))
+        plt.title(os.path.basename(self.lights_path[0]))
         plt.imshow(self.data, cmap='Greys', origin='upper', interpolation='none')
         plt.show()
 
 
     def plot_spectra(self):
-        _lights=fits.open(self.lights_path)
-        light=_lights[0]
-        self.data=light.data
 
 
         x2=403
@@ -94,7 +103,7 @@ class spectroscopy:
 
         # self.data=self.data/np.max(self.data)
         # self.data+=0.5
-        spec=np.zeros(len(self.data[:,0]),dtype=float)
+        spec=np.zeros(len(self.lights[0][:,0]),dtype=float)
         for i in range(-3,4):
             spec+=self.data[:,row+i]/7
 

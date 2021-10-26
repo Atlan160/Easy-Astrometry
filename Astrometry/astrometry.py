@@ -33,18 +33,19 @@ class astrometry:
 
     def __init__(self):
 
-        self.perform_dark_correction=False
         self.perform_median_correction=True #irrelevant if dark_correction is true
         self.sigma=4.0
         self.threshold=9.0
         self.fwhm=4
         self.test_file_number=0
         self.output_folder_number=0
-        self.moving_star_tolerance=0.2 #in arcsec
+        self.moving_star_tolerance=0.1 #in arcsec
         self.distance_tolerance_arcsec=8
         self.distance_tolerance_pixel=3
-        self.dark_path="" #is imported 
-        self.lights_path="" #is imported
+        self.dark=[] #is imported 
+        self.lights=[] #is imported
+        self.headers=[] # is imported
+        self.lights_path=""
         self.ref_i=0
 
         self.star_list=[]
@@ -52,18 +53,48 @@ class astrometry:
         self.data=[]
 
 
-    def set_light_path(self,path):
-        self.lights_path=path
+    def import_lights(self,path):
+        _lights=[]
+        _headers=[]
+        self.lights_path=path #import paths
 
-    def set_dark_path(self,path):
-        self.dark_path=path
-        self.perform_dark_correction=True
+        for fi in path:
+            file=fits.open(fi)
+            _lights.append(file[0].data)
+            _headers.append(file[0].header)
+        self.lights=_lights
+        self.headers=_headers
 
-    def dark_correction(self, data,dark):
-        return data-dark
+    def import_dark(self,path):
+        _darks=[]
+        for fi in path:
+            file=fits.open(fi)
+            _darks.append(file[0].data)
+        self.darks=_darks
 
-    def median_correction(self,data,median):
-        return data-median
+
+    def perform_dark_correction(self):
+        n=len(self.darks)
+        master_dark=self.darks[0] # init with first dark
+
+        #generate master_dark by stacking all darks
+        for i in range(1,len(self.darks)): 
+            master_dark+=self.darks[i]
+        self.dark=master_dark/n
+
+        for i in range(len(self.lights)):
+            self.lights[i]=self.lights[i]-self.dark
+
+        print("dark correction done")
+            
+
+    def perform_median_correction(self):
+        for i,li in enumerate(self.lights):
+            _mean, median, std = sigma_clipped_stats(li, sigma=self.sigma) #get data statistic
+            self.lights[i]=self.lights[i]-median
+
+
+
     
     def get_test_file_number(self):
         return self.test_file_number
@@ -82,18 +113,11 @@ class astrometry:
         """
 
 
-        for i,fi in enumerate(self.lights_path):
-            light=fits.open(fi)
-            data=light[0].data
+        for i,data in enumerate(self.lights):
+            fi=self.lights_path[i]
+
             _mean, median, std = sigma_clipped_stats(data, sigma=self.sigma) #get data statistic
 
-            #calibration
-            if self.perform_dark_correction:
-                dark=fits.open(self.dark_path)
-                dark_data=dark[0].data
-                data=self.dark_correction(data,dark_data)
-            else:
-                data=self.median_correction(data,median)
 
             daofind = DAOStarFinder(fwhm=self.fwhm, threshold=self.threshold*std)
             sources=daofind(data)
@@ -117,18 +141,10 @@ class astrometry:
         Args:
             file_number (int): number of file to plot
         """
+        data=self.lights[file_number]
 
-        light=fits.open(self.lights_path[file_number])
-        data=light[0].data
         _mean, median, std = sigma_clipped_stats(data, sigma=self.sigma) #get data statistic
         #calibration
-        if self.perform_dark_correction:
-            print("dark",self.dark_path)
-            dark=fits.open(self.dark_path)
-            dark_data=dark[0].data
-            data=self.dark_correction(data,dark_data)
-        else:
-            data=self.median_correction(data,median)
 
         daofind = DAOStarFinder(fwhm=self.fwhm, threshold=self.threshold*std)
         sources=daofind(data)
@@ -165,22 +181,9 @@ class astrometry:
             except FileExistsError:
                 self.output_folder_number+=1
 
-        for fi in self.lights_path:
-            #print("os.path.dirname(fi)", os.path.dirname(fi))
+        for i,data in enumerate(self.lights):
 
-
-            #####import files  ############
-            light=fits.open(fi)
-            data = light[0].data
             _mean, median, std = sigma_clipped_stats(data, sigma=self.sigma) #get data statistic
-
-            #calibration
-            if self.perform_dark_correction:
-                dark=fits.open(dark)
-                dark_data=dark[0].data
-                data=self.dark_correction(data,dark_data)
-            else:
-                data=self.median_correction(data,median)
 
 
 
@@ -202,7 +205,7 @@ class astrometry:
             #     plt.show()
                 
 
-            RA,DEC =astromath.return_coordinates_RA_DEC(light[0].header, sources['xcentroid'], sources['ycentroid'])
+            RA,DEC =astromath.return_coordinates_RA_DEC(self.headers[i], sources['xcentroid'], sources['ycentroid'])
             sources['RA']=RA
             sources['DEC']=DEC
             sources.sort('id')
@@ -213,7 +216,7 @@ class astrometry:
             
             if save_files==True:
         
-                sources.write(os.path.dirname(fi)+"/data_stars"+str(self.output_folder_number)+"/"+Path(fi).stem+".dat",format='ascii',overwrite=True)
+                sources.write(os.path.dirname(self.lights_path[i])+"/data_stars"+str(self.output_folder_number)+"/"+Path(self.lights_path[i]).stem+".dat",format='ascii',overwrite=True)
             
         return sources_list
                 
@@ -230,7 +233,8 @@ class astrometry:
         #star_list[star][file] type: star.star object
         ref_star_ID=-1 #error if not found
 
-        for i, star in enumerate(self.star_list): #star i browse through stars
+        #star_list[found stars in reference image][filenumber of related stars]  type=object star
+        for i, star in enumerate(self.star_list): 
             print("i",i)
 
             dev_dec=[]
@@ -254,7 +258,7 @@ class astrometry:
 
             print("m_dec ", m_dec)
             print("m_ra ",m_ra)
-            if (i<=2 or m_dec>self.moving_star_tolerance or m_ra>self.moving_star_tolerance) and len(star)>20:
+            if (i<=2 or m_rms>self.moving_star_tolerance):
                 plt.figure(i) #too many
                 plt.xlabel("dev RA in arcsec")
                 plt.ylabel("dev DEC in arcsec")
@@ -364,5 +368,5 @@ class astrometry:
         print("done finding same stars")
 
     def search_find(self):
-        help1=self.find_sources(False)
+        self.sources_list=self.find_sources(False)
         self.search_same_stars()

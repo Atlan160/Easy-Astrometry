@@ -47,8 +47,8 @@ def open_lights():
     try:
         lights_path=filedialog.askopenfilenames(initialdir =" ", title = "Select light files",filetypes = (("newly solved files",".new"),("fit files","*.fit"),("fits files","*.fits")))
         print(lights_path)
-        ametry.set_light_path(lights_path)
-        scopy.set_light_path(lights_path)
+        ametry.import_lights(lights_path)
+        scopy.import_lights(lights_path)
         messagebox.showinfo("success","imported "+str(len(lights_path))+" files.")
         #root.mainloop()
     except:
@@ -57,15 +57,19 @@ def open_lights():
 
 def open_dark():
     try:
-        dark_path=filedialog.askopenfile(initialdir= " ",title ="Select dark file", filetypes = (("fit files","*.fit"),("fits file","*.fits")) )
+        dark_path=filedialog.askopenfilenames(initialdir= " ",title ="Select dark file", filetypes = (("fits files","*.fits"),("fit file","*.fit")) )
         print(dark_path)
         if dark_path == "":
             messagebox.showinfo(" ","imported no files, median correction will then be done")
+            ametry.perform_median_correction()
         else:
-            ametry.set_dark_path(dark_path)
+            ametry.import_dark(dark_path)
+            ametry.perform_dark_correction()
             messagebox.showinfo("success","imported dark files")
     except:
-        messagebox.showerror("Error", "something went wrong importing light files, median correction will then be done")
+        ametry.perform_median_correction()
+        messagebox.showerror("Error", "something went wrong importing dark files, median correction will then be done")
+        
 
 
 def set_settings_tab():
