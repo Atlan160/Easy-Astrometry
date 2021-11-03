@@ -1,0 +1,10 @@
+ipywidgets
+	installation:
+	conda install -c anaconda ipywidgets
+
+numpy
+math
+matplotlib
+photutils
+astropy
+tkinter

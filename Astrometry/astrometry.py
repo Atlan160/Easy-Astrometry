@@ -1,6 +1,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.pyplot import plot, ion, show
 import math
 from functools import partial
 import os
@@ -37,7 +38,7 @@ class astrometry:
         self.sigma=4.0
         self.threshold=9.0
         self.fwhm=4
-        self.test_file_number=0
+        self.test_file_number=1
         self.output_folder_number=0
         self.moving_star_tolerance=0.1 #in arcsec
         self.distance_tolerance_arcsec=8
@@ -51,6 +52,7 @@ class astrometry:
         self.star_list=[]
         self.sources_list=[]
         self.data=[]
+        ion()
 
 
     def import_lights(self,path):
@@ -64,6 +66,9 @@ class astrometry:
             _headers.append(file[0].header)
         self.lights=_lights
         self.headers=_headers
+
+    def get_number_of_lights(self):
+        return len(self.lights)
 
     def import_dark(self,path):
         _darks=[]
@@ -111,8 +116,7 @@ class astrometry:
         This method plots all images that have been imported with its found stars
         
         """
-
-
+        plt.clf()
         for i,data in enumerate(self.lights):
             fi=self.lights_path[i]
 
@@ -126,7 +130,7 @@ class astrometry:
             positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
             apertures = CircularAperture(positions, r=4.)
             #norm = ImageNormalize(stretch=SqrtStretch()+PercentileInterval(70.))
-            plt.figure(i)
+            plt.figure(i+1)
             plt.title(os.path.basename(fi))
             plt.imshow(np.log(data), cmap='Greys', origin='lower', interpolation='none')
             for ii in range(len(sources['xcentroid'])):
@@ -139,9 +143,9 @@ class astrometry:
         """Plot only the image with the given filenumber
 
         Args:
-            file_number (int): number of file to plot
+            file_number (int): number of file to plot (starting with 1)
         """
-        data=self.lights[file_number]
+        data=self.lights[file_number-1]
 
         _mean, median, std = sigma_clipped_stats(data, sigma=self.sigma) #get data statistic
         #calibration
@@ -151,8 +155,9 @@ class astrometry:
         positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
         apertures = CircularAperture(positions, r=4.)
         #norm = ImageNormalize(stretch=SqrtStretch()+PercentileInterval(70.))
+        plt.clf()
         plt.figure(1)
-        plt.title("first lightfile, found stars: "+str(len(sources['id'])))
+        plt.title("File number:"+str(file_number)+", found stars: "+str(len(sources['id'])))
         plt.imshow(np.log(data), cmap='Greys', origin='lower', interpolation='none')
         for ii in range(len(sources['xcentroid'])):
             plt.text(sources['xcentroid'][ii]+10, sources['ycentroid'][ii],sources['id'][ii])

@@ -6,6 +6,9 @@ from functools import partial
 import os
 from pathlib import Path
 
+import ipywidgets as widgets
+from IPython.display import display
+
 import astromath #my own module
 import astrometry #my own class
 import spectroscopy # my own class
@@ -34,13 +37,12 @@ from tkinter import messagebox
 ametry=astrometry.astrometry()
 scopy=spectroscopy.spectroscopy()
 
-def set_parameters(_fwhm, _sigma, _threshold, _distance_tolerance_arcsec, _moving_star_tolerance): 
+def update_parameters(_fwhm, _sigma, _threshold, _distance_tolerance_arcsec, _moving_star_tolerance,_number): 
     ametry.set_parameters(float(_fwhm.get()),float(_sigma.get()),float(_threshold.get()),float(_distance_tolerance_arcsec.get()),float(_moving_star_tolerance.get()))
-
-
-def help_test_plot(t_number):  
-    n=int(t_number.get())
+    n=int(_number.get())
     ametry.test_plot(n)
+
+
 
 def open_lights():
 
@@ -70,9 +72,23 @@ def open_dark():
         ametry.perform_median_correction()
         messagebox.showerror("Error", "something went wrong importing dark files, median correction will then be done")
         
-
+  
 
 def set_settings_tab():
+
+
+    ###############
+    # w = widgets.IntSlider()
+    # w.value=5
+    # w.min=0
+    # w.max=10
+    # display(w)
+
+
+
+    ###############
+
+
     t_fwhm=StringVar() #textvariables, will be updated each time
     t_fwhm.set(str(ametry.fwhm))
     t_sigma=StringVar()
@@ -86,10 +102,8 @@ def set_settings_tab():
     t_moving_star_tolerance=StringVar()
     t_moving_star_tolerance.set(str(ametry.moving_star_tolerance))
     
-    _set=partial(set_parameters,t_fwhm,t_sigma,t_thr,t_dist_tolerance, t_moving_star_tolerance)
-    _test_plot=partial(help_test_plot,t_number)
-
-
+    _update_parameters=partial(update_parameters,t_fwhm,t_sigma,t_thr,t_dist_tolerance,t_moving_star_tolerance,t_number)
+    _update_parameters()
     lfwhm=Label(root, text="fwhm in pixel")
     lfwhm.grid(row=0,column=0)
     Entry(root, textvariable=t_fwhm).grid(row=0,column=1)
@@ -107,16 +121,16 @@ def set_settings_tab():
     ldist.grid(row=3,column=0)
     Entry(root, textvariable=t_dist_tolerance).grid(row=3,column=1)    
 
-    ldist=Label(root,text="Image number for test")
-    ldist.grid(row=4,column=0)
-    Entry(root, textvariable=t_number).grid(row=4,column=1)
-
-    lthreshold=Label(root,text="moving star tolerance")
-    lthreshold.grid(row=5,column=0)
+    lmstartol=Label(root,text="moving star tolerance")
+    lmstartol.grid(row=5,column=0)
     Entry(root, textvariable=t_moving_star_tolerance).grid(row=5,column=1)
 
-    Button(root,text="test settings", command=_test_plot).grid(row=6,column=0)
-    Button(root, text="set settings",command=_set).grid(row=6,column=1)
+    limnum=Label(root,text="Image number for test")
+    limnum.grid(row=4,column=0)
+    Scale(root,from_=1, to=ametry.get_number_of_lights(), variable=t_number, orient=HORIZONTAL).grid(row=4,column=1)
+
+
+    Button(root, text="set and test settings",command=_update_parameters).grid(row=6,column=0)
 
     __=tooltip.CreateToolTip(lfwhm, tooltip.tooltip_fwhm)
     __=tooltip.CreateToolTip(lsigma, tooltip.tooltip_sigma)
