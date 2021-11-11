@@ -35,6 +35,7 @@ from tkinter import messagebox
 class spectroscopy:
 
     #TODO rework importing of data like in astrometry.py
+    #TODO better create a master class from which spectroscopy inherits the methods
 
 
     def __init__(self):

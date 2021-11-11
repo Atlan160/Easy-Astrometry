@@ -32,3 +32,4 @@ class CreateToolTip(object):
 
 tooltip_fwhm="adjust the size of the stars in pixel. Defocussed stars need bigger values. 3-4 is a good value"
 tooltip_sigma="clipping value to estimate background. Definitely has to be lower than threshold. 3-4 is a good value"
+tooltip_tolerance="tolerance stars can move without being falsly detected in arcsecond"

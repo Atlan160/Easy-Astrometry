@@ -47,8 +47,7 @@ def update_parameters(_fwhm, _sigma, _threshold, _distance_tolerance_arcsec, _mo
 def open_lights():
 
     try:
-        lights_path=filedialog.askopenfilenames(initialdir =" ", title = "Select light files",filetypes = (("newly solved files",".new"),("fit files","*.fit"),("fits files","*.fits")))
-        print(lights_path)
+        lights_path=filedialog.askopenfilenames(initialdir =" ", title = "Select light files",filetypes = (("newly solved files",".new"),("fit files","*.fit"),("fits files","*.fits")))       
         ametry.import_lights(lights_path)
         scopy.import_lights(lights_path)
         messagebox.showinfo("success","imported "+str(len(lights_path))+" files.")
@@ -59,8 +58,7 @@ def open_lights():
 
 def open_dark():
     try:
-        dark_path=filedialog.askopenfilenames(initialdir= " ",title ="Select dark file", filetypes = (("fits files","*.fits"),("fit file","*.fit")) )
-        print(dark_path)
+        dark_path=filedialog.askopenfilenames(initialdir= " ",title ="Select dark file", filetypes = (("fits files","*.fits"),("fit file","*.fit")) )        
         if dark_path == "":
             messagebox.showinfo(" ","imported no files, median correction will then be done")
             ametry.perform_median_correction()
@@ -134,6 +132,7 @@ def set_settings_tab():
 
     __=tooltip.CreateToolTip(lfwhm, tooltip.tooltip_fwhm)
     __=tooltip.CreateToolTip(lsigma, tooltip.tooltip_sigma)
+    __=tooltip.CreateToolTip(lmstartol,tooltip.tooltip_tolerance)
     root.mainloop()
 
 def hello():
