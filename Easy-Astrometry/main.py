@@ -48,6 +48,8 @@ def open_lights():
         lights_path=filedialog.askopenfilenames(initialdir =" ", title = "Select light files",filetypes = (("newly solved files",".new"),("fit files","*.fit"),("fits files","*.fits")))       
         ametry.import_lights(lights_path)
         scopy.import_lights(lights_path)
+        ametry.same_stars_searched=False
+        ametry.moving_stars_searched=False
         messagebox.showinfo("success","imported "+str(len(lights_path))+" files.")
         #root.mainloop()
     except:
@@ -153,8 +155,8 @@ runmenu.add_command(label="Set parameters", command=set_settings_tab)
 runmenu.add_command(label="Plot all imported lights", command=ametry.plot_all_sources)
 runmenu.add_command(label="Search for stars and write to file", command=ametry.find_sources)
 runmenu.add_command(label="Search for same stars and write to file",command=ametry.search_find)
-runmenu.add_command(label="Search for moving stars", command=ametry.search_for_moving_stars)
-runmenu.add_command(label="Search for moving stars relative", command=ametry.search_without_platesolve)
+runmenu.add_command(label="Search for moving targets", command=ametry.search_for_moving_stars)
+runmenu.add_command(label="Search for moving targets relative", command=ametry.search_without_platesolve)
 menubar.add_cascade(label="Astrometry", menu=runmenu)
 
 runmenu=Menu(root)

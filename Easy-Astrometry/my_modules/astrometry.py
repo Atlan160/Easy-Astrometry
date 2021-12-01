@@ -46,6 +46,7 @@ class astrometry(calibration):
         self.distance_tolerance_pixel=3
 
         self.ref_i=0
+        self.stars_searched=False
         self.same_stars_searched=False
         self.moving_stars_searched=False
 
@@ -150,7 +151,7 @@ class astrometry(calibration):
             _found=False
             while _found==False: #define filename for output and find folder number
                 try:
-                    os.mkdir(os.path.dirname(self.lights_path[0])+"/data_stars"+str(self.output_folder_number))
+                    os.mkdir(os.path.dirname(self.lights_path[0])+"/data_stars_"+str(self.output_folder_number))
                     _found=True
                 except FileExistsError:
                     self.output_folder_number+=1
@@ -180,8 +181,8 @@ class astrometry(calibration):
                     
 
                 RA,DEC =astromath.return_coordinates_RA_DEC(self.headers[i], sources['xcentroid'], sources['ycentroid'])
-                sources['RA']=RA
-                sources['DEC']=DEC
+                sources['RA/deg']=RA
+                sources['DEC/deg']=DEC
                 sources.sort('id')
                 del sources['sky']; del sources['roundness1']
                 del sources['roundness2']; del sources['npix']; del sources['sharpness']
@@ -190,9 +191,11 @@ class astrometry(calibration):
                 
                 if save_files==True:
             
-                    sources.write(os.path.dirname(self.lights_path[i])+"/data_stars"+str(self.output_folder_number)+"/"+Path(self.lights_path[i]).stem+".dat",format='ascii',overwrite=True)
+                    sources.write(os.path.dirname(self.lights_path[i])+"/data_stars_"+str(self.output_folder_number)+"/"+Path(self.lights_path[i]).stem+".dat",format='ascii',overwrite=True)
                 
             self.sources_list=sources_list
+            self.stars_searched=True
+
                     
 
 
@@ -241,8 +244,8 @@ class astrometry(calibration):
                 print("m_ra ",m_ra)
                 if (i<=2 or m_rms>self.moving_star_tolerance):
                     plt.figure(i) #too many
-                    plt.xlabel("dev RA in arcsec")
-                    plt.ylabel("dev DEC in arcsec")
+                    plt.xlabel("dev RA/arcsec")
+                    plt.ylabel("dev DEC/arcsec")
                     plt.title("Reference image: "+str(self.ref_i)+" star id: "+str(ref_star_ID)+" m_dec "+str(np.round(m_dec,4))+" m_ra"+str(np.round(m_ra,4)))
                     plt.plot(dev_ra,dev_dec,linestyle='-',marker='+')
             self.test_plot(self.ref_i)
@@ -280,8 +283,8 @@ class astrometry(calibration):
             for i in range(len(self.sources_list[self.ref_i]['id'])): #reference image, loop over stars i in reference image
 
                 print("at star number",i)
-                ra_ref=self.sources_list[self.ref_i]['RA'][i] #RA of reference star nr. i
-                dec_ref=self.sources_list[self.ref_i]['DEC'][i] #DEC of reference star nr. i
+                ra_ref=self.sources_list[self.ref_i]['RA/deg'][i] #RA of reference star nr. i
+                dec_ref=self.sources_list[self.ref_i]['DEC/deg'][i] #DEC of reference star nr. i
                 flux_ref=self.sources_list[self.ref_i]['flux'][i] # flux of reference star nr. i
                 mag_ref=self.sources_list[self.ref_i]['mag'][i]
                 id_ref=self.sources_list[self.ref_i]['id'][i]
@@ -301,8 +304,8 @@ class astrometry(calibration):
                         for k in range(len(star_file['id'])): #loop over stars k in file j, !exclude reference image! maybe exclude distance=0 for that?
                         
                             #print("star number",k)
-                            ra=star_file['RA'][k]
-                            dec=star_file['DEC'][k]
+                            ra=star_file['RA/deg'][k]
+                            dec=star_file['DEC/deg'][k]
                             x=star_file['xcentroid'][k]
                             y=star_file['ycentroid'][k]
 
@@ -344,15 +347,17 @@ class astrometry(calibration):
                     rms_help.append(np.sqrt(s.dev_dec**2+s.dev_ra**2)*3600)
 
 
-                header="  ID    	xpos      ypos        RA/deg	      DEC/deg	     flux	     mag 	  dev_ra in arces  dev_dec in arcsec  RMS in arcsec"
+                header="  ID    	xpos      ypos        RA/deg	      DEC/deg	     flux	     mag 	  dev_ra/arcsec  dev_dec/arcsec  RMS/arcsec"
                 #this is done for every star i  (s) 
                 #save.save_to_file_5D(id_help,ra_help,dec_help, flux_help,mag_help, filename="data_stars"+str(_number)+"/id_"+str(sources_list[0]['id'][i]), acuracy=6,header=header)
                 output=np.array([id_help,x_help,y_help, ra_help,dec_help, flux_help,mag_help,dev_ra_help, dev_dec_help, rms_help])
                 #errors can occur here due to index overflow!
-                save.save_to_file_ND(output, filename=os.path.dirname(self.lights_path[0])+"/data_stars"+str(self.output_folder_number)+"/id_"+str(self.sources_list[self.ref_i]['id'][i]), acuracy=6,header=header)
+                save.save_to_file_ND(output, filename=os.path.dirname(self.lights_path[0])+"/data_stars_"+str(self.output_folder_number)+"/id_"+str(self.sources_list[self.ref_i]['id'][i])+"_ref_image_"+str(self.ref_i), acuracy=6,header=header)
                         
                 self.star_list.append(star_files_list)
+            
             print("done finding same stars")
+            self.same_stars_searched=True
 
       
 
@@ -363,7 +368,8 @@ class astrometry(calibration):
             messagebox.showerror("Error", "import lights first")
         
         else:
-            self.find_sources(False)
+            if self.stars_searched==False:
+                self.find_sources(False)
             self.search_same_stars()
 
 ###############################################
