@@ -27,11 +27,12 @@ from astropy.visualization import PercentileInterval
 from astropy.visualization import simple_norm
 from astropy.table import Table
 
-from tkinter import *
-from tkinter import filedialog
-from tkinter import messagebox
 
 class astrometry(calibration):
+
+    """
+    This class is resposible for all the calculations needed behind the Astrometry_root interface
+    """
 
     def __init__(self):
         super().__init__()
