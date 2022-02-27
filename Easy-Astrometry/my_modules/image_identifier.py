@@ -2,6 +2,7 @@ from msilib.schema import CheckBox
 from tkinter import LEFT
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Ellipse
 from matplotlib.pyplot import axes, plot, ion, show
 import matplotlib.lines as lines
 import math
@@ -18,13 +19,6 @@ import my_modules.star as star #my own module
 from my_modules.tooltip import CreateToolTip #not my own module, from the internet
 
 
-import photutils
-from photutils import datasets
-from photutils import DAOStarFinder
-from photutils import CircularAperture
-
-import ipywidgets as widgets
-from IPython.display import display
 from tkinter import *
 from tkinter import filedialog
 from tkinter import messagebox
@@ -39,6 +33,13 @@ from astropy.visualization import PercentileInterval
 from astropy.visualization import simple_norm
 from astropy.table import Table
 
+import photutils
+from photutils import datasets
+from photutils import DAOStarFinder
+from photutils import CircularAperture
+
+import ipywidgets as widgets
+from IPython.display import display
 
 class image_identifier(calibration):
 
@@ -60,16 +61,17 @@ class image_identifier(calibration):
         self.figure.canvas.flush_events() # pauses event loop until next event is triggered
 
         self.line_container=[]
-        self.circle_container=[]
+        self.ellipse_container=[]
         self.text_container=[]
 
-        #[x,y]
+        #mouse positions [x,y]
         self.clicked=[0,0]
         self.released=[0,0]
         self.current_position=[0,0]
 
 
-        self.clickstate_draw=0 #1 is click#1 and 2 is click#2
+        self.clickstate_draw_line=0 #1 is click#1 and 2 is click#2
+        self.clickstate_draw_circle=0 #1 is click#1 and 2 is click#2
 
         ### States ####
         self.draw_line_state=False
@@ -80,6 +82,7 @@ class image_identifier(calibration):
 
         ### image properties ###
         self.image_scale_arcsec_per_pixel=self.header["scale"]
+        self.sources=self.find_stars() # stars in image
 
         ### Textvariables ###
         self.stringvar_RA=StringVar(self.GUI)
@@ -105,6 +108,18 @@ class image_identifier(calibration):
         #for test
         print("Hello World")
 
+
+    def find_stars(self):
+        """
+        Find all stars in image with given parameters and return them
+        """
+
+        _mean, median, std = sigma_clipped_stats(self.data, sigma=4.0) #get data statistic
+        daofind = DAOStarFinder(fwhm=4, threshold=9*std)
+        return daofind(self.data)
+
+
+
     def find_nearby_star(self,x,y,tol=20):
         """
         Finds nearby stars in proximity of coordinates x,y.
@@ -119,21 +134,17 @@ class image_identifier(calibration):
 
 
 
-        _mean, median, std = sigma_clipped_stats(self.data, sigma=4.0) #get data statistic
-
-        daofind = DAOStarFinder(fwhm=4, threshold=9*std)
-        sources=daofind(self.data)
         index=-1
         distance=100000 #should be more than enough for any image
 
-        for i in range(len(sources["id"])):
+        for i in range(len(self.sources["id"])):
 
-            if astromath.return_distance_pixel(x,y,sources["xcentroid"][i],sources["ycentroid"][i])<distance:
-                distance=astromath.return_distance_pixel(x,y,sources["xcentroid"][i],sources["ycentroid"][i])
+            if astromath.return_distance_pixel(x,y,self.sources["xcentroid"][i],self.sources["ycentroid"][i])<distance:
+                distance=astromath.return_distance_pixel(x,y,self.sources["xcentroid"][i],self.sources["ycentroid"][i])
                 index=i
         
         if distance<tol:
-            return sources["xcentroid"][index],sources["ycentroid"][index]
+            return self.sources["xcentroid"][index],self.sources["ycentroid"][index]
         else:
             messagebox.showinfo("Error","couldnt find a star at the given position")
             return -1,-1
@@ -150,29 +161,30 @@ class image_identifier(calibration):
         print("clicked")
         #print("dtype",type(event.xdata))
 
-        if event.xdata is not None and event.ydata is not None:
+        if event.xdata is not None and event.ydata is not None: # just check if coordinates are valid
             if event.xdata>=0 and event.ydata>=0:
             
                 print("after event_check")
                 self.clicked[0]=event.xdata 
                 self.clicked[1]=event.ydata
 
-                if self.draw_line_state==True and self.clickstate_draw==0:
+                if self.draw_line_state==True and self.clickstate_draw_line==0: # if lines shall be drawn and it is first point
                     if self.snap_on_stars==True:
                         x,y=self.find_nearby_star(self.clicked[0],self.clicked[1])
 
-                        if x>=0 and y>=0:                            
-                            self.draw_line(self.clicked[0],self.clicked[1])
-                            self.clickstate_draw+=1
+                        if x>=0 and y>=0:       #TODO check if x,y shouldnt be in function      
+                            self.clickstate_draw_line+=1               
+                            self.draw_line(x,y)
+                            
                     else:   
-                        self.clickstate_draw+=1
+                        self.clickstate_draw_line+=1
                         self.draw_line(self.clicked[0],self.clicked[1])
 
                 else:
-                    self.clickstate_draw=0
+                    self.clickstate_draw_line=0
                     self.draw_line_state=False
 
-                if self.draw_point_state==True:
+                if self.draw_point_state==True: # if point shall be drawn
 
                     if self.snap_on_stars==True:
                         x,y=self.find_nearby_star(self.clicked[0],self.clicked[1])
@@ -180,9 +192,23 @@ class image_identifier(calibration):
                             self.draw_point(x,y)
 
                     else:
-                        self.draw_point(event.xdata,event.ydata)
+                        self.draw_point(self.clicked[0],self.clicked[1])
 
                     self.draw_point_state=False
+                
+                if self.draw_circles_state==True and self.clickstate_draw_circle==0: # if a circle shall be drawn
+
+                    if self.snap_on_stars==True:
+                        x,y=self.find_nearby_star(self.clicked[0],self.clicked[1])
+                        if x>=0 and y>=0:
+                            self.clickstate_draw_circle+=1                            
+                            self.draw_circle(x,y,0)
+                    else:
+                        self.clickstate_draw_circle+=1
+                        self.draw_circle(self.clicked[0],self.clicked[1],0)
+                else:
+                    self.clickstate_draw_circle=0
+                    self.draw_circles_state=False
         
         self.figure.canvas.draw()
         self.figure.canvas.flush_events()
@@ -227,7 +253,7 @@ class image_identifier(calibration):
             self.axes.set_ylim(ylim[0]*0.9,ylim[1]*0.9)
 
 
-        if event.button=="down":
+        if event.button=="up":
             #zoom in
             xlim=self.axes.get_xlim()
             ylim=self.axes.get_ylim()
@@ -242,27 +268,35 @@ class image_identifier(calibration):
         is updated whenever mouse is moved
         """
 
-        if self.draw_line_state==True and self.clickstate_draw==1 and len(self.line_container)>0 and self.snap_on_stars==False:
+        if self.draw_line_state==True and self.clickstate_draw_line==1 and len(self.line_container)>0 and self.snap_on_stars==False:
             x_current_line=self.line_container[-1].get_xdata(orig=False)
             y_current_line=self.line_container[-1].get_ydata(orig=False)
             length_pixel=astromath.return_distance_pixel(x_current_line[0],y_current_line[0],self.current_position[0],self.current_position[1])
             length_arcsec=length_pixel*self.image_scale_arcsec_per_pixel
             self.line_container[-1].set_data([x_current_line[0],self.current_position[0]],[y_current_line[0],self.current_position[1]])
             self.text_container[-1].set_position((x_current_line[0]+(self.current_position[0]-x_current_line[0])/2,y_current_line[0]+(self.current_position[1]-y_current_line[0])/2))
-            self.text_container[-1].set_text("length in arcmin "+str(length_arcsec/60),color="deepskyblue")
+            self.text_container[-1].set_text("length in arcmin "+str(np.round(length_arcsec/60,6)))
 
-        elif self.draw_line_state==True and self.clickstate_draw==1 and len(self.line_container)>0 and self.snap_on_stars==True:
+
+        elif self.draw_line_state==True and self.clickstate_draw_line==1 and len(self.line_container)>0 and self.snap_on_stars==True:
             x_current_line=self.line_container[-1].get_xdata(orig=False)
             y_current_line=self.line_container[-1].get_ydata(orig=False)
-            x,y=self.find_nearby_star(self.clicked[0],self.clicked[1],tol=100000)
+            x,y=self.find_nearby_star(self.current_position[0],self.current_position[1],tol=100000)
             if x>=0 and y>=0:                            
 
-                length_pixel=astromath.return_distance_pixel(x_current_line[0],y_current_line[0],x,x)
-                length_arcsec=length_pixel*self.image_scale_arcsec_per_pixel
+                length_arcsec=astromath.return_distance_pixel_scaled(x_current_line[0],y_current_line[0],x,y,self.image_scale_arcsec_per_pixel)
                 self.line_container[-1].set_data([x_current_line[0],x],[y_current_line[0],y])
-                #TODO needs a rework of position
                 self.text_container[-1].set_position((x_current_line[0]+(x-x_current_line[0])/2,y_current_line[0]+(y-y_current_line[0])/2))
-                self.text_container[-1].set_text("length in arcmin "+str(length_arcsec/60),color="deepskyblue")
+                self.text_container[-1].set_text("length in arcmin "+str(np.round(length_arcsec/60,6)))
+
+
+        if self.draw_circles_state==True and self.clickstate_draw_circle==1 and len(self.ellipse_container)>0 and self.snap_on_stars==False:
+            x,y=self.ellipse_container[-1].get_center()
+            radius=astromath.return_distance_pixel(x,y,self.current_position[0],self.current_position[1])
+            length_arcsec=self.image_scale_arcsec_per_pixel*2*radius
+            self.ellipse_container[-1].width=2*radius
+            self.ellipse_container[-1].height=2*radius
+            self.text_container[-1].set_text("diameter in arcmin "+str(np.round(length_arcsec/60,6)))
             
         self.figure.canvas.draw()
         self.figure.canvas.flush_events()
@@ -274,10 +308,10 @@ class image_identifier(calibration):
         """
         print("drawing line")
 
-        l=lines.Line2D([x,x],[y,y],color="deepskyblue")
+        l=lines.Line2D([x,x],[y,y],color="magenta")
         self.axes.add_line(l)
         self.line_container.append(l)
-        self.text_container.append(self.axes.text(0,0,""))
+        self.text_container.append(self.axes.text(x,y,"",color="magenta"))
 
     def find_draw_coordinates(self):
         """
@@ -288,7 +322,6 @@ class image_identifier(calibration):
         RA=float(self.stringvar_RA.get())
         DEC=float(self.stringvar_DEC.get())
         X,Y=astromath.return_X_Y_coordinates(self.header,RA,DEC)
-        #TODO X,Y coordinates are always the same...
         self.axes.scatter(X,Y,color="None",edgecolors="orangered",alpha=0.5)
         text="RA:"+str(np.round(RA,6))+" DEC:"+str(np.round(DEC,6))
         self.axes.text(X+10,Y,text,color="orangered")
@@ -312,6 +345,14 @@ class image_identifier(calibration):
         self.figure.canvas.flush_events()
 
 
+    def draw_circle(self,x,y,r):
+
+        ellipse=Ellipse((x,y),r,r,0,fill=False,edgecolor="red")
+        self.ellipse_container.append(ellipse)
+        self.axes.add_patch(ellipse)
+        self.text_container.append(self.axes.text(x,y,"",color="red"))
+        self.figure.canvas.draw()
+        self.figure.canvas.flush_events()
 
     def set_drawcircle(self):
         self.draw_circles_state=True
