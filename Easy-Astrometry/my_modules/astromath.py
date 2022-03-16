@@ -15,7 +15,7 @@ from astropy.visualization import simple_norm
 from astropy.table import Table
 
 
-def return_coordinates_RA_DEC(header, x,y):
+def return_coordinates_RA_DEC(header,x,y):
     """[summary]
 
     Args:
@@ -59,7 +59,7 @@ def return_coordinates_RA_DEC(header, x,y):
         return (RAnew,DECnew)
 
 
-    elif (type(x)==list and type(y)==list) or (type(x)==np.ndarray and type(y)==np.ndarray):
+    elif (type(x)==list and type(y)==list) or (type(x)==np.ndarray and type(y)==np.ndarray) or (type(x)==astropy.table.column.Column and type(y)==astropy.table.column.Column):
         RAnew=np.zeros_like(x)
         DECnew=np.zeros_like(y)
 
@@ -69,6 +69,7 @@ def return_coordinates_RA_DEC(header, x,y):
             DECnew[i]=c21*(x[i]-xref)+c22*(y[i]-yref)+DECref
 
         return (RAnew,DECnew)
+
     else:
         print("in else statement")
         print("type of RA,Dec",type(x))

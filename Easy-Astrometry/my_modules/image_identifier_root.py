@@ -28,7 +28,7 @@ class image_identifier_root():
         self.image_identifier_plot_class=None
 
         self.easy_image_identifier_GUI=Tk(className="Easy-Image Identifier")
-        self.easy_image_identifier_GUI.geometry("1300x700+300+200")
+        self.easy_image_identifier_GUI.geometry("1900x1000+10+20")
         self.easy_image_identifier_GUI.iconbitmap('_images/icons/image_identifier_favicon.ico')
 
         self.Menubar=Menu(self.easy_image_identifier_GUI)
@@ -45,7 +45,7 @@ class image_identifier_root():
     def open_file(self):
 
         try:
-            lights_path=filedialog.askopenfilenames(initialdir =" ", title = "Select one image file",filetypes = (("newly solved files",".new"),("fit files","*.fit"),("fits files","*.fits")))       
+            lights_path=filedialog.askopenfilenames(initialdir =" ", title = "Select one image file",filetypes = (("fits files","*.fits"),("newly solved files",".new"),("fit files","*.fit")))       
             self.image_identifier_plot_class=image_identifier(lights_path,self.easy_image_identifier_GUI,self.Menubar)
 
 
