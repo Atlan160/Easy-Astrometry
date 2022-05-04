@@ -1,4 +1,3 @@
-from msilib.schema import CheckBox
 from tkinter import LEFT
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,6 +7,7 @@ import matplotlib.lines as lines
 import math
 from functools import partial
 import os
+import time
 from pathlib import Path
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg,NavigationToolbar2Tk
@@ -44,17 +44,52 @@ from IPython.display import display
 class image_identifier(calibration):
 
     def __init__(self,lights_path,GUI,menubar):
+
+        ### getting calibration constructor and setting up GUI ###
         super().__init__()
         self.GUI=GUI #TK interface
-        self.menubar=menubar
+
+        ###  getting image data ###
         self.import_lights(lights_path)
         self.data=self.lights[0] #inherited from calibration
         self.header=self.headers[0] #same
 
+        ### mouse positions [x,y] ###
+        self.clicked=[0,0]
+        self.released=[0,0]
+        self.current_position=[0,0]
+
+        self.clickstate_draw_line=0 #1 is click#1 and 2 is click#2 TODO check if one can change that to a boolean variable
+        self.clickstate_draw_circle=0 #1 is click#1 and 2 is click#2
+
+        ### States ####
+        self.draw_line_state=False
+        self.draw_circle_state=False
+        self.draw_point_state=False
+        self.snap_on_stars=False
+        self.mouse_on_hold=False
+        self.show_magnitude_state=False
+        self.calibrate_magnitude_state=False
+
+        ### image properties ###
+        self.image_scale_arcsec_per_pixel=self.header["scale"]
+        self.sources=self.find_stars() # stars in image
+
+        ### Textvariables ###
+        self.stringvar_RA=StringVar(self.GUI,value=0) #TODO why not use DoubleVar ?
+        self.stringvar_DEC=StringVar(self.GUI,value="0")
+        self.stringvar_current_coordinates_RA=StringVar(self.GUI,value="0")
+        self.stringvar_current_coordinates_DEC=StringVar(self.GUI,value="0")
+        self.stringvar_calibrate_magnitude=StringVar(self.GUI,value="0")
+        self.doublevar_gamma=DoubleVar(self.GUI,value=1)
+
+
+        ### GUI elements and figure ###
+        self.menubar=menubar
         self.figure=plt.figure(figsize=(20,12),dpi=100)
         self.axes=plt.axes()
-        self.axes.imshow(np.log(self.data)/np.log(30),cmap="Greys_r")
-        ##############################
+
+        im1=self.axes.imshow(self.data**-self.doublevar_gamma.get(),cmap="Greys")
         self.canvas=FigureCanvasTkAgg(self.figure, self.GUI)
         self.canvas.get_tk_widget().grid(row=0,column=10,rowspan=50,sticky=E)
         self.figure.canvas.draw()
@@ -65,37 +100,6 @@ class image_identifier(calibration):
         self.point_container=[]
         self.text_container=[]
         self.text_magnitude_container=[]
-
-        #mouse positions [x,y]
-        self.clicked=[0,0]
-        self.released=[0,0]
-        self.current_position=[0,0]
-
-
-        self.clickstate_draw_line=0 #1 is click#1 and 2 is click#2
-        self.clickstate_draw_circle=0 #1 is click#1 and 2 is click#2
-
-        ### States ####
-        self.draw_line_state=False
-        self.draw_circle_state=False
-        self.draw_point_state=False
-        self.snap_on_stars=False
-        self.mouse_on_hold=False
-        self.show_magnitude_state=False
-
-        ### image properties ###
-        self.image_scale_arcsec_per_pixel=self.header["scale"]
-        self.sources=self.find_stars() # stars in image
-
-        ### Textvariables ###
-        self.stringvar_RA=StringVar(self.GUI)
-        self.stringvar_RA.set(str(0))
-        self.stringvar_DEC=StringVar(self.GUI)
-        self.stringvar_DEC.set(str(0))
-        self.stringvar_current_coordinates_RA=StringVar(self.GUI)
-        self.stringvar_current_coordinates_RA.set(str(0))
-        self.stringvar_current_coordinates_DEC=StringVar(self.GUI)
-        self.stringvar_current_coordinates_DEC.set(str(0))
 
 
         # setup GUI
@@ -147,7 +151,7 @@ class image_identifier(calibration):
                 index=i
         
         if distance<tol:
-            return self.sources["xcentroid"][index],self.sources["ycentroid"][index]
+            return self.sources["xcentroid"][index],self.sources["ycentroid"][index], index
         else:
             messagebox.showinfo("Error","couldnt find a star at the given position")
             return -1,-1
@@ -171,9 +175,12 @@ class image_identifier(calibration):
                 self.clicked[0]=event.xdata 
                 self.clicked[1]=event.ydata
 
-                if self.draw_line_state==True and self.clickstate_draw_line==0: # if lines shall be drawn and it is first point
+                if self.draw_line_state==True and self.clickstate_draw_line==0: 
+                    """
+                    if lines shall be drawn and it is first point
+                    """
                     if self.snap_on_stars==True:
-                        x,y=self.find_nearby_star(self.clicked[0],self.clicked[1])
+                        x,y,_=self.find_nearby_star(self.clicked[0],self.clicked[1])
 
                         if x>=0 and y>=0:        
                             self.clickstate_draw_line+=1               
@@ -187,10 +194,13 @@ class image_identifier(calibration):
                     self.clickstate_draw_line=0
                     self.draw_line_state=False
 
-                if self.draw_point_state==True: # if point shall be drawn
+                if self.draw_point_state==True: 
+                    """
+                    if point shall be drawn  
+                    """
 
                     if self.snap_on_stars==True:
-                        x,y=self.find_nearby_star(self.clicked[0],self.clicked[1])
+                        x,y,_=self.find_nearby_star(self.clicked[0],self.clicked[1])
                         if x>=0 and y>=0:                            
                             self.draw_point(x,y)
 
@@ -199,10 +209,13 @@ class image_identifier(calibration):
 
                     self.draw_point_state=False
                 
-                if self.draw_circle_state==True and self.clickstate_draw_circle==0: # if a circle shall be drawn
+                if self.draw_circle_state==True and self.clickstate_draw_circle==0: 
+                    """
+                    if a circle shall be drawn
+                    """
 
                     if self.snap_on_stars==True:
-                        x,y=self.find_nearby_star(self.clicked[0],self.clicked[1])
+                        x,y,_=self.find_nearby_star(self.clicked[0],self.clicked[1])
                         if x>=0 and y>=0:
                             print("in circle snap on stars")
                             print("xy",x,y)
@@ -214,14 +227,22 @@ class image_identifier(calibration):
                 else:
                     self.clickstate_draw_circle=0
                     self.draw_circle_state=False
+                
+                if self.calibrate_magnitude_state==True:
+                    """
+                    Stars magnitude shall be calibrated
+                    """
+                    x,y,index=self.find_nearby_star(self.clicked[0],self.clicked[1])
+                    if x>=0 and y>=0:
+                        print("calibrating star")
+                        mag=float(self.stringvar_calibrate_magnitude.get())
+                        self.calibrate_magnitude(mag, index)
+
+                    self.calibrate_magnitude_state=False
+
         
         self.figure.canvas.draw()
         self.figure.canvas.flush_events()
-
-
-
-
-
 
         
 
@@ -286,7 +307,7 @@ class image_identifier(calibration):
         elif self.draw_line_state==True and self.clickstate_draw_line==1 and len(self.line_container)>0 and self.snap_on_stars==True:
             x_current_line=self.line_container[-1].get_xdata(orig=False)
             y_current_line=self.line_container[-1].get_ydata(orig=False)
-            x,y=self.find_nearby_star(self.current_position[0],self.current_position[1],tol=100000)
+            x,y,_=self.find_nearby_star(self.current_position[0],self.current_position[1],tol=100000)
             if x>=0 and y>=0:                            
 
                 length_arcsec=astromath.return_distance_pixel_scaled(x_current_line[0],y_current_line[0],x,y,self.image_scale_arcsec_per_pixel)
@@ -349,6 +370,8 @@ class image_identifier(calibration):
         self.figure.canvas.draw()
         self.figure.canvas.flush_events()
 
+    def set_drawcircle(self):
+        self.draw_circle_state=True
 
     def draw_circle(self,x,y,r):
 
@@ -378,28 +401,55 @@ class image_identifier(calibration):
         self.figure.canvas.draw()
         self.figure.canvas.flush_events()
 
-    def set_drawcircle(self):
-        self.draw_circle_state=True
 
     def invert_snap_on_stars(self):
         self.snap_on_stars= not self.snap_on_stars
         print("snap on stars is",self.snap_on_stars)
 
     def reset_all_drawings(self):
-        for _ in self.line_container:
-            _.remove()
-        for _ in self.text_container:
-            _.remove()
-        for _ in self.ellipse_container:
-            _.remove()
-        for _ in self.text_magnitude_container:
-            _.remove()
-        for _ in self.point_container:
-            _.remove()
 
+
+        while len(self.line_container)>0:
+            print("line_container length: ",len(self.line_container))
+            self.line_container.remove(self.line_container[-1])
+            print("line length after remove: ",len(self.line_container))
+        while len(self.text_container)>0:
+            self.text_container.remove(self.text_container[-1])
+        while len(self.ellipse_container)>0:
+            self.ellipse_container.remove(self.ellipse_container[-1])
+        while len(self.text_magnitude_container)>0:
+            self.text_magnitude_container.remove(self.text_magnitude_container[-1])
+        while len(self.point_container)>0:
+            self.point_container.remove(self.point_container[-1])
+
+        self.axes.clear()
+        self.axes.imshow(self.data**-self.doublevar_gamma.get(),cmap="Greys")
+
+        self.Checkbox_show_magnitude.deselect()
 
         self.figure.canvas.draw()
         self.figure.canvas.flush_events()
+
+    def set_calibrate_magnitude(self):
+        self.calibrate_magnitude_state=True
+
+    def calibrate_magnitude(self,mag_calibrated_reference_star,index):
+        mag_instrument_reference_star=self.sources["mag"][index]
+        
+        for i in range(len(self.sources["mag"])):
+            mag_instrument_star=self.sources["mag"][i]
+            self.sources["mag"][i]=mag_calibrated_reference_star+(mag_instrument_star-mag_instrument_reference_star)
+
+    def update_gamma_value(self,event):
+        #self.axes.clear()
+        self.axes.imshow(self.data**-self.doublevar_gamma.get(),cmap="Greys")
+
+        print("new gamma value",self.doublevar_gamma.get())
+        self.figure.canvas.draw()
+        self.figure.canvas.flush_events()
+
+
+
 
     def init_GUI(self):
         """
@@ -434,12 +484,12 @@ class image_identifier(calibration):
         Label_coordinates_DEC=Label(self.GUI,text="DEC in decimals:")
         Label_coordinates_DEC.grid(row=4,column=0)
 
-        textfield_RA=Entry(self.GUI, textvariable=self.stringvar_RA)
-        textfield_RA.grid(row=3,column=1)
-        textfield_DEC=Entry(self.GUI, textvariable=self.stringvar_DEC)
-        textfield_DEC.grid(row=4,column=1)
-        Find_coord_button=Button(self.GUI,text="Find coordinates",command=self.find_draw_coordinates)
-        Find_coord_button.grid(row=5,column=1)
+        Textfield_RA=Entry(self.GUI, textvariable=self.stringvar_RA)
+        Textfield_RA.grid(row=3,column=1)
+        Textfield_DEC=Entry(self.GUI, textvariable=self.stringvar_DEC)
+        Textfield_DEC.grid(row=4,column=1)
+        Button_Find_coord=Button(self.GUI,text="Find coordinates",command=self.find_draw_coordinates)
+        Button_Find_coord.grid(row=5,column=1)
         print("entry is",self.stringvar_DEC.get())
 
         Label_show_coords=Label(self.GUI,text="Current mouse coordinates in degree",font=("Arial", 12))
@@ -449,11 +499,22 @@ class image_identifier(calibration):
         Label_show_coords_DEC=Label(self.GUI,textvariable=self.stringvar_current_coordinates_DEC)
         Label_show_coords_DEC.grid(row=7,column=1)
 
-        show_magnitude_checkbox=Checkbutton(self.GUI,text="show stars relative magnitude",onvalue=1, offvalue=0,command=self.show_magnitude)
-        show_magnitude_checkbox.deselect()
-        show_magnitude_checkbox.grid(row=8,column=0)
+        self.Checkbox_show_magnitude=Checkbutton(self.GUI,text="show stars relative magnitude",onvalue=1, offvalue=0, command=self.show_magnitude)
+        self.Checkbox_show_magnitude.deselect()
+        self.Checkbox_show_magnitude.grid(row=8,column=0)
 
-        reset_button=Button(self.GUI,text="Reset all drawings",command=self.reset_all_drawings)
-        reset_button.grid(row=9,column=0)
+        Textfield_calibrate_magnitude=Entry(self.GUI, textvariable=self.stringvar_calibrate_magnitude)
+        Textfield_calibrate_magnitude.grid(row=8,column=1)
+        Button_calibrate_magnitude=Button(self.GUI,text="calibrate magnitude",command=self.set_calibrate_magnitude)
+        Button_calibrate_magnitude.grid(row=8,column=2)
+
+        Button_reset=Button(self.GUI,text="reset all drawings",command=self.reset_all_drawings)
+        Button_reset.grid(row=9,column=0)
+
+        Label_gamma_slider=Label(self.GUI,text="Change Gamma value of image")
+        Label_gamma_slider.grid(row=10,column=1)
+        Slider_gamma=Scale(self.GUI,from_=0.1,to=10,resolution=0.1,length=300,orient="horizontal",variable=self.doublevar_gamma, command=self.update_gamma_value)
+        Slider_gamma.grid(row=10,column=0)
+        
         # dont use this function otherwise program is traped in this mainloop
         #self.GUI.mainloop()
