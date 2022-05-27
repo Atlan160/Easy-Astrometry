@@ -140,6 +140,61 @@ def return_X_Y_coordinates(header,RA,DEC):
         return(0.0,0.0)
         
 
+def rotate_RA_DEC_vector(header, RA, DEC):
+        
+    try:
+        #print("image has a renewed plate solve")
+        c11=header['CD1_1']
+        c12=header['CD1_2']
+        c21=header['CD2_1']
+        c22=header['CD2_2']
+    except:
+        #print("original plate solve")
+        cdelt1=header['CDELT1']
+        cdelt2=header['CDELT2']
+        crota2=header['CROTA1']
+        c11=cdelt1*math.cos(crota2)
+        c12=-cdelt2*math.sin(crota2)
+        c21=cdelt1*math.sin(crota2)
+        c22=cdelt2*math.sin(crota2)
+
+    try:
+        xref=header['CRPIX1']
+        yref=header['CRPIX2']
+        RAref=header['CRVAL1']
+        DECref=header['CRVAL2']
+    except:
+        print("something went wrong with extracting reference points")
+
+    
+
+    if (type(RA)==float and type(DEC)==float) or (type(RA)==np.float64 and type(DEC)==np.float64) or ((type(RA)==int and type(DEC)==int)):
+        print("in single number")
+
+        determinante=(c11*c22-c21*c12)
+
+        Xnew=RA*c22/determinante-DEC*c12/determinante
+        Ynew=-RA*c21/determinante+DEC*c11/determinante
+
+
+        return (Xnew,Ynew)
+     
+    elif (type(RA)==list and type(DEC)==list) or (type(RA)==np.ndarray and type(DEC)==np.ndarray):
+        Xnew=np.zeros_like(RA)
+        Ynew=np.zeros_like(DEC)
+
+        determinante=(c11*c22-c21*c12)
+        for i in range(len(Xnew)): #Xnew and Ynew are arrays with length of number of stars
+            Xnew[i]=RA[i]*c22/determinante-DEC[i]*c12/determinante
+            Ynew[i]=-RA[i]*c21/determinante+DEC[i]*c11/determinante
+
+
+        return (Xnew,Ynew)
+    else:
+        print("in else statement")
+        print("type of RA,Dec",type(RA))
+        return(0.0,0.0)
+
 
 
 def return_distance_arsec(ra1, dec1, ra2,dec2):

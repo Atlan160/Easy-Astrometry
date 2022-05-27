@@ -69,6 +69,7 @@ class image_identifier(calibration):
         self.snap_on_stars=False
         self.mouse_on_hold=False
         self.show_magnitude_state=False
+        self.show_orientation_state=True
         self.calibrate_magnitude_state=False
 
         ### image properties ###
@@ -85,13 +86,16 @@ class image_identifier(calibration):
 
 
         ### GUI elements and figure ###
+        self.GUI_Frame=Frame(GUI)
+        self.Image_Frame=Frame(self.GUI_Frame)
+        self.Elements_Frame=Frame(self.GUI_Frame)
         self.menubar=menubar
-        self.figure=plt.figure(figsize=(20,12),dpi=100)
+        self.figure=plt.figure(figsize=(20,12),dpi=100,frameon=True,constrained_layout=True)
         self.axes=plt.axes()
 
         im1=self.axes.imshow(self.data**-self.doublevar_gamma.get(),cmap="Greys")
-        self.canvas=FigureCanvasTkAgg(self.figure, self.GUI)
-        self.canvas.get_tk_widget().grid(row=0,column=10,rowspan=50,sticky=E)
+        self.canvas=FigureCanvasTkAgg(self.figure, self.Image_Frame)
+        self.canvas.get_tk_widget().grid(row=0,column=0)
         self.figure.canvas.draw()
         self.figure.canvas.flush_events() # pauses event loop until next event is triggered
 
@@ -100,6 +104,7 @@ class image_identifier(calibration):
         self.point_container=[]
         self.text_container=[]
         self.text_magnitude_container=[]
+        self.arrow_container=[]
 
 
         # setup GUI
@@ -244,6 +249,41 @@ class image_identifier(calibration):
         self.figure.canvas.draw()
         self.figure.canvas.flush_events()
 
+    def show_RA_DEC_orientation(self):
+
+        self.show_orientation_state = not self.show_orientation_state
+
+        if self.show_orientation_state==True:
+            dx_ra,dy_ra=astromath.rotate_RA_DEC_vector(self.header, 1, 0)
+            dx_dec,dy_dec=astromath.rotate_RA_DEC_vector(self.header, 0, 1)
+
+            #normalize vector, since image also applies stretching
+            length_ra,length_dec=np.sqrt(dx_ra**2+dy_ra**2),np.sqrt(dx_dec**2+dy_dec**2)
+            dx_ra/=length_ra
+            dy_ra/=length_ra 
+            dx_dec/=length_dec
+            dy_dec/=length_dec
+
+            image_x=float(self.header["NAXIS1"]) #get image size x,y
+            image_y=float(self.header["NAXIS2"])
+            dx_ra*=image_y/10
+            dy_ra*=image_y/10
+            dx_dec*=image_y/10
+            dy_dec*=image_y/10
+
+            print("dx ra arrow",dx_ra)
+            print("dy ra arrow",dy_ra)
+
+            self.arrow_container.append(self.axes.arrow(image_x/10,image_y/10,dx_ra,dy_ra,color="red",alpha=0.8)) #red seems ok, green not
+            self.arrow_container.append(self.axes.arrow(image_x/10,image_y/10,dx_dec,dy_dec,color="green",alpha=0.8))
+
+
+        if self.show_orientation_state==False:
+            while len(self.arrow_container)>0:
+                self.arrow_container.remove(self.arrow_container[-1])
+
+        self.figure.canvas.draw()
+        self.figure.canvas.flush_events()
         
 
     def onrelease(self,event):
@@ -396,7 +436,8 @@ class image_identifier(calibration):
         
 
         if self.show_magnitude_state==False:
-            self.text_magnitude_container.clear()
+            while len(self.text_magnitude_container)>0:
+                self.text_magnitude_container.remove(self.text_magnitude_container[-1])
 
         self.figure.canvas.draw()
         self.figure.canvas.flush_events()
@@ -421,11 +462,16 @@ class image_identifier(calibration):
             self.text_magnitude_container.remove(self.text_magnitude_container[-1])
         while len(self.point_container)>0:
             self.point_container.remove(self.point_container[-1])
+        while len(self.arrow_container)>0:
+            self.arrow_container.remove(self.arrow_container[-1])
 
         self.axes.clear()
         self.axes.imshow(self.data**-self.doublevar_gamma.get(),cmap="Greys")
 
         self.Checkbox_show_magnitude.deselect()
+        self.Checkbox_show_orientation.deselect()
+        self.show_magnitude_state=False
+        self.show_orientation_state=False
 
         self.figure.canvas.draw()
         self.figure.canvas.flush_events()
@@ -465,56 +511,80 @@ class image_identifier(calibration):
         self.GUI.config(menu=self.menubar)
 
 
-        Label_drawing=Label(self.GUI,text="Drawing",font=("Arial", 12))
+        Frame_drawing=Frame(self.Elements_Frame,borderwidth=1,relief=RIDGE)
+        Label_drawing=Label(Frame_drawing,text="Drawing",font=("Arial", 12))
         Label_drawing.grid(row=0,column=0)
-        Line_draw_button=Button(self.GUI,text="Line",command=self.set_drawline)
+        Line_draw_button=Button(Frame_drawing,text="Line",command=self.set_drawline)
         Line_draw_button.grid(row=1,column=0)
-        Point_draw_button=Button(self.GUI,text="Point",command=self.set_drawpoint)
+        Point_draw_button=Button(Frame_drawing,text="Point",command=self.set_drawpoint)
         Point_draw_button.grid(row=1,column=1)
-        Circle_draw_button=Button(self.GUI,text="Circle",command=self.set_drawcircle)
+        Circle_draw_button=Button(Frame_drawing,text="Circle",command=self.set_drawcircle)
         Circle_draw_button.grid(row=1,column=2)
-        snap_stars_checkbox=Checkbutton(self.GUI,text="snap on stars",onvalue=1, offvalue=0,command=self.invert_snap_on_stars)
+        snap_stars_checkbox=Checkbutton(Frame_drawing,text="snap on stars",onvalue=1, offvalue=0,command=self.invert_snap_on_stars)
         snap_stars_checkbox.deselect()
-        snap_stars_checkbox.grid(row=1,column=3)
+        snap_stars_checkbox.grid(row=2,column=1)
 
-        Label_coordinates=Label(self.GUI,text="Find Coordinates",font=("Arial", 12))
-        Label_coordinates.grid(row=2,column=0)
-        Label_coordinates_RA=Label(self.GUI,text="RA in decimals:")
-        Label_coordinates_RA.grid(row=3,column=0)
-        Label_coordinates_DEC=Label(self.GUI,text="DEC in decimals:")
-        Label_coordinates_DEC.grid(row=4,column=0)
 
-        Textfield_RA=Entry(self.GUI, textvariable=self.stringvar_RA)
-        Textfield_RA.grid(row=3,column=1)
-        Textfield_DEC=Entry(self.GUI, textvariable=self.stringvar_DEC)
-        Textfield_DEC.grid(row=4,column=1)
-        Button_Find_coord=Button(self.GUI,text="Find coordinates",command=self.find_draw_coordinates)
-        Button_Find_coord.grid(row=5,column=1)
-        print("entry is",self.stringvar_DEC.get())
+        Frame_find_coordinates=Frame(self.Elements_Frame,borderwidth=1,relief=RIDGE)
+        Label_coordinates=Label(Frame_find_coordinates,text="Find Coordinates",font=("Arial", 12))
+        Label_coordinates.grid(row=0,column=0)
+        Label_coordinates_RA=Label(Frame_find_coordinates,text="RA in decimals:")
+        Label_coordinates_RA.grid(row=1,column=0)
+        Label_coordinates_DEC=Label(Frame_find_coordinates,text="DEC in decimals:")
+        Label_coordinates_DEC.grid(row=2,column=0)
 
-        Label_show_coords=Label(self.GUI,text="Current mouse coordinates in degree",font=("Arial", 12))
-        Label_show_coords.grid(row=6,column=0)
-        Label_show_coords_RA=Label(self.GUI,textvariable=self.stringvar_current_coordinates_RA)
-        Label_show_coords_RA.grid(row=7,column=0)
-        Label_show_coords_DEC=Label(self.GUI,textvariable=self.stringvar_current_coordinates_DEC)
-        Label_show_coords_DEC.grid(row=7,column=1)
+        Textfield_RA=Entry(Frame_find_coordinates, textvariable=self.stringvar_RA)
+        Textfield_RA.grid(row=1,column=1)
+        Textfield_DEC=Entry(Frame_find_coordinates, textvariable=self.stringvar_DEC)
+        Textfield_DEC.grid(row=2,column=1)
+        Button_Find_coord=Button(Frame_find_coordinates,text="Find entered coordinates",command=self.find_draw_coordinates)
+        Button_Find_coord.grid(row=3,column=1)
+        print("DEC entry is",self.stringvar_DEC.get())
+        print("RA entry is",self.stringvar_RA.get())
+        self.Checkbox_show_orientation=Checkbutton(Frame_find_coordinates,text="Show axes orientation",onvalue=1,offvalue=0,command=self.show_RA_DEC_orientation)
+        self.Checkbox_show_orientation.select()
+        self.show_RA_DEC_orientation() #do initial plot
+        self.Checkbox_show_orientation.grid(row=4,column=0)
+        
 
-        self.Checkbox_show_magnitude=Checkbutton(self.GUI,text="show stars relative magnitude",onvalue=1, offvalue=0, command=self.show_magnitude)
+        Frame_current_mouse_position=Frame(self.Elements_Frame,borderwidth=1,relief=RIDGE)
+        Label_show_coords=Label(Frame_current_mouse_position,text="Current mouse coordinates in degree",font=("Arial", 12))
+        Label_show_coords.grid(row=0,column=0)
+        Label_show_coords_RA=Label(Frame_current_mouse_position,textvariable=self.stringvar_current_coordinates_RA)
+        Label_show_coords_RA.grid(row=1,column=0)
+        Label_show_coords_DEC=Label(Frame_current_mouse_position,textvariable=self.stringvar_current_coordinates_DEC)
+        Label_show_coords_DEC.grid(row=1,column=1)
+
+        Frame_calibrate_magnitude=Frame(self.Elements_Frame,border=1,relief=RIDGE)
+        Label_coordinates=Label(Frame_calibrate_magnitude,text="Calibrate Stars Magnitude",font=("Arial", 12))
+        Label_coordinates.grid(row=0,column=0)
+        Textfield_calibrate_magnitude=Entry(Frame_calibrate_magnitude, textvariable=self.stringvar_calibrate_magnitude)
+        Textfield_calibrate_magnitude.grid(row=1,column=0)
+        Button_calibrate_magnitude=Button(Frame_calibrate_magnitude,text="calibrate magnitude",command=self.set_calibrate_magnitude)
+        Button_calibrate_magnitude.grid(row=1,column=1)
+        self.Checkbox_show_magnitude=Checkbutton(Frame_calibrate_magnitude,text="show stars relative magnitude",onvalue=1, offvalue=0, command=self.show_magnitude)
         self.Checkbox_show_magnitude.deselect()
-        self.Checkbox_show_magnitude.grid(row=8,column=0)
+        self.Checkbox_show_magnitude.grid(row=2,column=0)
 
-        Textfield_calibrate_magnitude=Entry(self.GUI, textvariable=self.stringvar_calibrate_magnitude)
-        Textfield_calibrate_magnitude.grid(row=8,column=1)
-        Button_calibrate_magnitude=Button(self.GUI,text="calibrate magnitude",command=self.set_calibrate_magnitude)
-        Button_calibrate_magnitude.grid(row=8,column=2)
 
-        Button_reset=Button(self.GUI,text="reset all drawings",command=self.reset_all_drawings)
-        Button_reset.grid(row=9,column=0)
 
-        Label_gamma_slider=Label(self.GUI,text="Change Gamma value of image")
-        Label_gamma_slider.grid(row=10,column=1)
-        Slider_gamma=Scale(self.GUI,from_=0.1,to=10,resolution=0.1,length=300,orient="horizontal",variable=self.doublevar_gamma, command=self.update_gamma_value)
-        Slider_gamma.grid(row=10,column=0)
+        Frame_drawing.grid(row=0,column=0,sticky="NW",pady=20)
+        Frame_current_mouse_position.grid(row=1,column=0,pady=20,sticky="NW")
+        Frame_find_coordinates.grid(row=2,column=0,sticky="NW",pady=20)
+        Frame_calibrate_magnitude.grid(row=4,column=0,sticky="NW",pady=20)
+
+
+        Slider_gamma=Scale(self.Elements_Frame,from_=0.1,to=10,resolution=0.1,length=300,orient="horizontal",variable=self.doublevar_gamma, command=self.update_gamma_value)
+        Slider_gamma.grid(row=5,column=0,sticky="NW")
+        Label_gamma_slider=Label(self.Elements_Frame,text="Change Gamma value of image")
+        Label_gamma_slider.grid(row=6,column=0,sticky="NW",pady=10)
+        Button_reset=Button(self.Elements_Frame,text="reset all drawings",command=self.reset_all_drawings)
+        Button_reset.grid(row=7,column=0,pady=20)
+
+        self.Elements_Frame.grid(row=0,column=0,sticky="NW")
+        self.Image_Frame.grid(row=0,column=1,sticky="NN")
+
+        self.GUI_Frame.pack()
         
         # dont use this function otherwise program is traped in this mainloop
         #self.GUI.mainloop()

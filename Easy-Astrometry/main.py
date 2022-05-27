@@ -7,7 +7,8 @@ from my_modules.image_identifier_root import image_identifier_root
 
 
 easy_astronomy_root=Tk(className=" Easy-Astronomy")
-easy_astronomy_root.geometry("300x200+100+100")
+width, height = easy_astronomy_root.winfo_screenwidth(), easy_astronomy_root.winfo_screenheight()
+easy_astronomy_root.geometry("200x200+100+100")
 easy_astronomy_root.iconbitmap('_images/icons/astrometry_favicon.ico')
 
 
