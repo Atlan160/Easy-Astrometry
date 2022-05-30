@@ -39,3 +39,11 @@ class _Tooltip_strings():
         self.tooltip_fwhm="adjust the size of the stars in pixel. Defocussed stars need bigger values. 3-4 is a good value"
         self.tooltip_sigma="clipping value to estimate background. Definitely has to be lower than threshold. 3-4 is a good value"
         self.tooltip_tolerance="tolerance stars can move without being falsly detected in arcsecond"
+
+        self.tooltip_show_orientation="Is supposed to show the orientation of RA,DEC axis. \n This is not properly working yet, the orientation seems not to be correct"
+        self.tooltip_click_draw="click on one of the buttons and then click on a point in the image. you need to click on the button again for a new drawing"
+        self.tooltip_snap_on_stars="when this checkbox is activated, the programm will automatically check for stars nearby and then snap the point onto them. \n \
+            If this takes longer than some seconds and returns an error, then you need to click closer to a recognized star."
+        self.tooltip_show_stars_magnitude="show the instrument magnitude of the recognized stars. You need to calibrate with a reference star first to get correct values."
+        self.tooltip_calibrate_stars_magnitude="enter the magnitude of a star you know, then click on the button and the star which belongs to the entered magnitude.\n \
+             If the instrument magnitude is already shown, you have to redraw everything."

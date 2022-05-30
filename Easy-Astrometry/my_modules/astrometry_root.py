@@ -37,7 +37,7 @@ class astrometry_root():
 
     def __init__(self):
         self.ametry=astrometry()
-        Tooltip_strings=_Tooltip_strings()
+        self.Tooltip_strings=_Tooltip_strings()
         self.easy_astrometry_root=Tk(className=" Easy-Astrometry")
         self.easy_astrometry_root.geometry("300x200+400+200")
         self.easy_astrometry_root.iconbitmap('_images/icons/astrometry_favicon.ico')

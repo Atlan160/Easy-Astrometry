@@ -9,7 +9,7 @@ from my_modules.image_identifier_root import image_identifier_root
 easy_astronomy_root=Tk(className=" Easy-Astronomy")
 width, height = easy_astronomy_root.winfo_screenwidth(), easy_astronomy_root.winfo_screenheight()
 easy_astronomy_root.geometry("200x200+100+100")
-easy_astronomy_root.iconbitmap('_images/icons/astrometry_favicon.ico')
+#easy_astronomy_root.iconbitmap('_images/icons/astrometry_favicon.ico') #@georgios, you can also comment out this line
 
 
 def start_astrometry():

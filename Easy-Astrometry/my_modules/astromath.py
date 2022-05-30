@@ -207,7 +207,23 @@ def return_distance_pixel(x1,y1,x2,y2):
 def return_distance_pixel_scaled(x1,y1,x2,y2,scale):
     return scale*math.sqrt((x1-x2)**2+(y1-y2)**2)
 
+def decimal_dec_to_hours(dec):
+    deg=math.floor(dec)
+    deg_decimal=dec-math.floor(dec)
+    min=math.floor(deg_decimal*60)
+    sec=(deg_decimal*60-min)*60
 
+    return deg,min,sec
+
+def decimal_rec_to_hours(rec):
+    hours=math.floor(rec/15)
+    min=math.floor((rec/15-hours)*60)
+    min_decimal=(rec/15-hours)*60-min
+    sec=min_decimal*60
+
+    return hours,min,sec
+
+    sec=rec/(15*60)
 def get_image_with_highest_index(sources):
     max=0
     index=0

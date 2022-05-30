@@ -1,5 +1,5 @@
-**__pycache__
-**.mypy_cache
+**/__pycache__
+**/.mypy_cache
 /Dark
 moving_stars_overview.jpg
 /spectra

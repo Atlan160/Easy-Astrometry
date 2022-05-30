@@ -16,7 +16,7 @@ import my_modules.astromath as astromath #my own module
 from my_modules.calibration import calibration # my own module
 import my_modules.save as save #my own module
 import my_modules.star as star #my own module
-from my_modules.tooltip import CreateToolTip #not my own module, from the internet
+from my_modules.tooltip import CreateToolTip, _Tooltip_strings #not my own module, from the internet
 
 
 from tkinter import *
@@ -48,6 +48,8 @@ class image_identifier(calibration):
         ### getting calibration constructor and setting up GUI ###
         super().__init__()
         self.GUI=GUI #TK interface
+
+        self.Tooltip_strings=_Tooltip_strings() # all the text for the tooltips are stored in a class
 
         ###  getting image data ###
         self.import_lights(lights_path)
@@ -303,8 +305,11 @@ class image_identifier(calibration):
                 self.current_position[0]=event.xdata 
                 self.current_position[1]=event.ydata
                 RA,DEC=astromath.return_coordinates_RA_DEC(self.header,event.xdata,event.ydata)
-                self.stringvar_current_coordinates_RA.set(str(np.round(RA,5)))
-                self.stringvar_current_coordinates_DEC.set(str(np.round(DEC,5)))                
+                ra_h,ra_min,ra_sec=astromath.decimal_rec_to_hours(RA)
+                dec_deg,dec_min,dec_sec=astromath.decimal_dec_to_hours(DEC)
+
+                self.stringvar_current_coordinates_RA.set("RA: "+str(ra_h)+"h "+str(ra_min)+"min "+str(np.round(ra_sec,1))+"sec ")
+                self.stringvar_current_coordinates_DEC.set("DEC: "+str(dec_deg)+"° "+str(dec_min)+"min "+str(np.round(dec_sec,1))+"sec ")                
 
                 self.update_plot()
         #check if movement is in data
@@ -389,7 +394,9 @@ class image_identifier(calibration):
         DEC=float(self.stringvar_DEC.get())
         X,Y=astromath.return_X_Y_coordinates(self.header,RA,DEC)
         self.point_container.append(self.axes.scatter(X,Y,color="None",edgecolors="orangered",alpha=0.5))
-        text="RA:"+str(np.round(RA,6))+" DEC:"+str(np.round(DEC,6))
+        ra_h,ra_min,ra_sec=astromath.decimal_rec_to_hours(RA)
+        dec_deg,dec_min,dec_sec=astromath.decimal_dec_to_hours(DEC)
+        text="RA: "+str(ra_h)+"h "+str(ra_min)+"min "+str(np.round(ra_sec,1))+"sec "+"DEC: "+str(dec_deg)+"° "+str(dec_min)+"min "+str(np.round(dec_sec,1))+"sec "
         self.text_container.append(self.axes.text(X+10,Y,text,color="orangered"))
         self.figure.canvas.draw()
         self.figure.canvas.flush_events()
@@ -405,7 +412,9 @@ class image_identifier(calibration):
     def draw_point(self,x,y):
         self.point_container.append(self.axes.scatter(x,y,color="None",edgecolors="springgreen",alpha=0.5))
         RA,DEC=astromath.return_coordinates_RA_DEC(self.header,x,y)
-        text="RA:"+str(np.round(RA,6))+" DEC:"+str(np.round(DEC,6))
+        ra_h,ra_min,ra_sec=astromath.decimal_rec_to_hours(RA)
+        dec_deg,dec_min,dec_sec=astromath.decimal_dec_to_hours(DEC)
+        text="RA: "+str(ra_h)+"h "+str(ra_min)+"min "+str(np.round(ra_sec,1))+"sec "+"DEC: "+str(dec_deg)+"° "+str(dec_min)+"min "+str(np.round(dec_sec,1))+"sec "
         self.text_container.append(self.axes.text(x+10,y,text,color="springgreen"))
         self.figure.canvas.draw()
         self.figure.canvas.flush_events()
@@ -523,6 +532,9 @@ class image_identifier(calibration):
         snap_stars_checkbox=Checkbutton(Frame_drawing,text="snap on stars",onvalue=1, offvalue=0,command=self.invert_snap_on_stars)
         snap_stars_checkbox.deselect()
         snap_stars_checkbox.grid(row=2,column=1)
+        __=CreateToolTip(Frame_drawing, self.Tooltip_strings.tooltip_click_draw)
+        __=CreateToolTip(snap_stars_checkbox,self.Tooltip_strings.tooltip_snap_on_stars)
+
 
 
         Frame_find_coordinates=Frame(self.Elements_Frame,borderwidth=1,relief=RIDGE)
@@ -539,16 +551,18 @@ class image_identifier(calibration):
         Textfield_DEC.grid(row=2,column=1)
         Button_Find_coord=Button(Frame_find_coordinates,text="Find entered coordinates",command=self.find_draw_coordinates)
         Button_Find_coord.grid(row=3,column=1)
-        print("DEC entry is",self.stringvar_DEC.get())
-        print("RA entry is",self.stringvar_RA.get())
+        print("DEC entry in decimals is",self.stringvar_DEC.get())
+        print("RA entry in decimals is",self.stringvar_RA.get())
+
         self.Checkbox_show_orientation=Checkbutton(Frame_find_coordinates,text="Show axes orientation",onvalue=1,offvalue=0,command=self.show_RA_DEC_orientation)
         self.Checkbox_show_orientation.select()
         self.show_RA_DEC_orientation() #do initial plot
         self.Checkbox_show_orientation.grid(row=4,column=0)
+        __=CreateToolTip(self.Checkbox_show_orientation, self.Tooltip_strings.tooltip_show_orientation)
         
 
         Frame_current_mouse_position=Frame(self.Elements_Frame,borderwidth=1,relief=RIDGE)
-        Label_show_coords=Label(Frame_current_mouse_position,text="Current mouse coordinates in degree",font=("Arial", 12))
+        Label_show_coords=Label(Frame_current_mouse_position,text="Current mouse coordinates",font=("Arial", 12))
         Label_show_coords.grid(row=0,column=0)
         Label_show_coords_RA=Label(Frame_current_mouse_position,textvariable=self.stringvar_current_coordinates_RA)
         Label_show_coords_RA.grid(row=1,column=0)
@@ -556,8 +570,8 @@ class image_identifier(calibration):
         Label_show_coords_DEC.grid(row=1,column=1)
 
         Frame_calibrate_magnitude=Frame(self.Elements_Frame,border=1,relief=RIDGE)
-        Label_coordinates=Label(Frame_calibrate_magnitude,text="Calibrate Stars Magnitude",font=("Arial", 12))
-        Label_coordinates.grid(row=0,column=0)
+        Label_magnitude=Label(Frame_calibrate_magnitude,text="Calibrate Stars Magnitude",font=("Arial", 12))
+        Label_magnitude.grid(row=0,column=0)
         Textfield_calibrate_magnitude=Entry(Frame_calibrate_magnitude, textvariable=self.stringvar_calibrate_magnitude)
         Textfield_calibrate_magnitude.grid(row=1,column=0)
         Button_calibrate_magnitude=Button(Frame_calibrate_magnitude,text="calibrate magnitude",command=self.set_calibrate_magnitude)
@@ -565,6 +579,8 @@ class image_identifier(calibration):
         self.Checkbox_show_magnitude=Checkbutton(Frame_calibrate_magnitude,text="show stars relative magnitude",onvalue=1, offvalue=0, command=self.show_magnitude)
         self.Checkbox_show_magnitude.deselect()
         self.Checkbox_show_magnitude.grid(row=2,column=0)
+        __=CreateToolTip(self.Checkbox_show_magnitude, self.Tooltip_strings.tooltip_show_stars_magnitude)
+        __=CreateToolTip(Button_calibrate_magnitude, self.Tooltip_strings.tooltip_calibrate_stars_magnitude)
 
 
 

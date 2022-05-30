@@ -31,7 +31,7 @@ class image_identifier_root():
         width, height = self.easy_image_identifier_GUI.winfo_screenwidth(), self.easy_image_identifier_GUI.winfo_screenheight()
         self.easy_image_identifier_GUI.geometry(str(width)+"x"+str(height)+"+0+0")
         #self.easy_image_identifier_GUI.geometry("1900x1000+10+20")
-        self.easy_image_identifier_GUI.iconbitmap('_images/icons/image_identifier_favicon.ico')
+        self.easy_image_identifier_GUI.iconbitmap('_images/icons/image_identifier_favicon.ico') #@georgios this line can also be uncommentend
 
         self.Menubar=Menu(self.easy_image_identifier_GUI)
         filemenu = Menu(self.Menubar, tearoff=0)
