@@ -2,33 +2,21 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import axes, plot, ion, show
-from matplotlib.figure import Figure
-import matplotlib.lines as lines
-from matplotlib.patches import Ellipse
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg,NavigationToolbar2Tk
 import math
 from functools import partial
 import os
 from pathlib import Path
-import time
 
 import my_modules.astromath as astromath #my own module
 from my_modules.calibration import calibration # my own module
 import my_modules.save as save #my own module
 import my_modules.star as star #my own module
-from my_modules.image_container import image_container
-from my_modules.tooltip import CreateToolTip, _Tooltip_strings #not my own module, from the internet
-
+from my_modules.tooltip import CreateToolTip #not my own module, from the internet
 
 import photutils
 from photutils import datasets
 from photutils import DAOStarFinder
 from photutils import CircularAperture
-
-from tkinter import *
-from tkinter import filedialog
-from tkinter import messagebox
-from tkinter import LEFT
 
 import astropy
 from astropy.io import fits
@@ -39,33 +27,15 @@ from astropy.visualization import PercentileInterval
 from astropy.visualization import simple_norm
 from astropy.table import Table
 
-import ipywidgets as widgets
-from IPython.display import display
 
-
-class astrometry(image_container):
+class astrometry(calibration):
 
     """
     This class is resposible for all the calculations needed behind the Astrometry_root interface
     """
 
-    def __init__(self,lights_path,GUI,menubar):
-        super().__init__(lights_path,GUI,menubar)
-
-        self.Tooltip_strings=_Tooltip_strings() # all the text for the tooltips are stored in a class
-
-        ### mouse positions [x,y] ###
-        self.clicked=[0,0]
-        self.released=[0,0]
-        self.current_position=[0,0]
-
-        ### image properties ###
-        self.image_scale_arcsec_per_pixel=self.header["scale"]
-
-        # the actual plot, backend iherited from image_container
-        self.doublevar_gamma=DoubleVar(self.GUI,value=1)
-        im1=self.axes.imshow(self.data**-self.doublevar_gamma.get(),cmap="Greys")
-
+    def __init__(self):
+        super().__init__()
         self.perform_median_correction=True #irrelevant if dark_correction is true
         self.sigma=4.0
         self.threshold=9.0
@@ -85,11 +55,8 @@ class astrometry(image_container):
         self.star_list=[]
         self.sources_list=[]
 
-        self.sources=self.find_sources(save_files=False) # stars in image
-
-        self.init_GUI()
+        ion()
         
-
 
 
 
@@ -97,6 +64,12 @@ class astrometry(image_container):
     def get_test_file_number(self):
         return self.test_file_number
     
+    def set_parameters(self,fwhm,sigma,threshold,distance_tolerance_arcsec,moving_star_tolerance):
+        self.fwhm=fwhm
+        self.sigma=sigma
+        self.threshold=threshold
+        self.distance_tolerance_arcsec=distance_tolerance_arcsec
+        self.moving_star_tolerance=moving_star_tolerance
 
     def plot_all_sources(self):
         """
@@ -176,9 +149,15 @@ class astrometry(image_container):
         
         else:
             sources_list=[]
+            _found=False
+            while _found==False: #define filename for output and find folder number
+                try:
+                    os.mkdir(os.path.dirname(self.lights_path[0])+"/data_stars_"+str(self.output_folder_number))
+                    _found=True
+                except FileExistsError:
+                    self.output_folder_number+=1
 
             for i,data in enumerate(self.lights):
-                print("finding stars in file #",str(i))
 
                 _mean, median, std = sigma_clipped_stats(data, sigma=self.sigma) #get data statistic
 
@@ -188,7 +167,19 @@ class astrometry(image_container):
 
                 daofind = DAOStarFinder(fwhm=self.fwhm, threshold=self.threshold*std)
                 sources=daofind(data) #sources is a astropy.table type, sources contains all the found stars by daofind algorithm
-                   
+                # print("Found "+str(len(sources['id']))+" Stars in file number "+str(i))
+                # if plot_all==True:
+                #     positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
+                #     apertures = CircularAperture(positions, r=4.)
+                #     #norm = ImageNormalize(stretch=SqrtStretch()+PercentileInterval(70.))
+                #     plt.figure(i)
+                #     plt.imshow(np.log(data), cmap='Greys', origin='lower', interpolation='none')
+                #     for ii in range(len(sources['xcentroid'])):
+                #         plt.text(sources['xcentroid'][ii]+10, sources['ycentroid'][ii],sources['id'][ii])
+
+                #     apertures.plot(color='blue', lw=1.5, alpha=0.5)
+                #     plt.show()
+                    
 
                 RA,DEC =astromath.return_coordinates_RA_DEC(self.headers[i], sources['xcentroid'], sources['ycentroid'])
                 sources['RA/deg']=RA
@@ -200,13 +191,6 @@ class astrometry(image_container):
                 sources_list.append(sources) #write found stars of file into list
                 
                 if save_files==True:
-                    _found=False
-                    while _found==False: #define filename for output and find folder number
-                        try:
-                            os.mkdir(os.path.dirname(self.lights_path[0])+"/data_stars_"+str(self.output_folder_number))
-                            _found=True
-                        except FileExistsError:
-                            self.output_folder_number+=1
             
                     sources.write(os.path.dirname(self.lights_path[i])+"/data_stars_"+str(self.output_folder_number)+"/"+Path(self.lights_path[i]).stem+".dat",format='ascii',overwrite=True)
                 
@@ -446,80 +430,4 @@ class astrometry(image_container):
 
         #star_list[star][file] type: star.star object
 
-    def update_parameters(self,fwhm, sigma, threshold, distance_tolerance_arcsec, moving_star_tolerance,number): 
-        self.fwhm=fwhm
-        self.sigma=sigma
-        self.threshold=threshold
-        self.distance_tolerance_arcsec=distance_tolerance_arcsec
-        self.moving_star_tolerance=moving_star_tolerance
-        self.test_plot(number)
-
-    def set_settings_tab(self):
-        #TODO needs a rework
-
-        ###############
-        temp_gui=Tk(className="Set Parameters")
-        temp_gui.geometry("500x300+0+0")
-
-        t_fwhm=StringVar() #textvariables, will be updated each time
-        t_fwhm.set(str(self.fwhm))
-        t_sigma=StringVar()
-        t_sigma.set(str(self.sigma))
-        t_thr=StringVar()
-        t_thr.set(str(self.threshold))
-        t_dist_tolerance=StringVar()
-        t_dist_tolerance.set(str(self.distance_tolerance_arcsec))
-        t_number=StringVar()
-        t_number.set(str(self.test_file_number))
-        t_moving_star_tolerance=StringVar()
-        t_moving_star_tolerance.set(str(self.moving_star_tolerance))
-        
-        _update_parameters=partial(self.update_parameters,t_fwhm,t_sigma,t_thr,t_dist_tolerance,t_moving_star_tolerance,t_number)
-        _update_parameters()
-        lfwhm=Label(temp_gui, text="fwhm in pixel")
-        lfwhm.grid(row=0,column=0)
-        Entry(temp_gui, textvariable=t_fwhm).grid(row=0,column=1)
-
-        lsigma=Label(temp_gui,text="sigma")
-        lsigma.grid(row=1,column=0)
-        Entry(temp_gui, textvariable=t_sigma).grid(row=1,column=1)
-
-        lthreshold=Label(temp_gui,text="threshold")
-        lthreshold.grid(row=2,column=0)
-        Entry(temp_gui, textvariable=t_thr).grid(row=2,column=1)
-        
-
-        ldist=Label(temp_gui,text="distance tolerance of stars in arcsec")
-        ldist.grid(row=3,column=0)
-        Entry(temp_gui, textvariable=t_dist_tolerance).grid(row=3,column=1)    
-
-        lmstartol=Label(temp_gui,text="moving star tolerance")
-        lmstartol.grid(row=5,column=0)
-        Entry(temp_gui, textvariable=t_moving_star_tolerance).grid(row=5,column=1)
-
-        limnum=Label(temp_gui,text="Image number for test")
-        limnum.grid(row=4,column=0)
-        Scale(temp_gui,from_=1, to=self.get_number_of_lights(), variable=t_number, orient=HORIZONTAL).grid(row=4,column=1)
-
-
-        Button(temp_gui, text="set and test settings",command=_update_parameters).grid(row=6,column=0)
-
-        __=CreateToolTip(lfwhm, self.Tooltip_strings.tooltip_fwhm)
-        __=CreateToolTip(lsigma, self.Tooltip_strings.tooltip_sigma)
-        __=CreateToolTip(lmstartol,self.Tooltip_strings.tooltip_tolerance)
-        self.easy_astrometry_root.mainloop()
-
-    def init_GUI(self):
-
-        runmenu=Menu(self.menubar,tearoff=0)
-        runmenu.add_command(label="Set parameters", command=self.set_settings_tab)
-        runmenu.add_command(label="Plot all imported lights", command=self.plot_all_sources)
-        runmenu.add_command(label="Search for stars and write to file", command=self.find_sources)
-        runmenu.add_command(label="Search for same stars and write to file",command=self.search_find)
-        runmenu.add_command(label="Search for moving targets", command=self.search_for_moving_stars)
-        runmenu.add_command(label="Search for moving targets relative", command=self.search_without_platesolve)
-        self.menubar.add_cascade(label="Astrometry", menu=runmenu)
-
-        self.GUI.config(menu=self.menubar)
-        self.GUI_Frame.pack()
-
+  

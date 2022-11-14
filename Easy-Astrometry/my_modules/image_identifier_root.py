@@ -19,6 +19,7 @@ from tkinter import messagebox
 from my_modules.tooltip import CreateToolTip, _Tooltip_strings #not my own module, from the internet
 from my_modules.image_identifier import image_identifier
 
+
 #plt.ion()
 
 class image_identifier_root():

@@ -1,21 +1,23 @@
-from tkinter import LEFT
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 from matplotlib.pyplot import axes, plot, ion, show
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg,NavigationToolbar2Tk
 import matplotlib.lines as lines
+
 import math
 from functools import partial
 import os
 import time
 from pathlib import Path
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg,NavigationToolbar2Tk
+
 
 import my_modules.astromath as astromath #my own module
 from my_modules.calibration import calibration # my own module
 import my_modules.save as save #my own module
 import my_modules.star as star #my own module
+from my_modules.image_container import image_container
 from my_modules.tooltip import CreateToolTip, _Tooltip_strings #not my own module, from the internet
 
 
@@ -41,20 +43,14 @@ from photutils import CircularAperture
 import ipywidgets as widgets
 from IPython.display import display
 
-class image_identifier(calibration):
+class image_identifier(image_container):
 
     def __init__(self,lights_path,GUI,menubar):
 
         ### getting calibration constructor and setting up GUI ###
-        super().__init__()
-        self.GUI=GUI #TK interface
+        super().__init__(lights_path,GUI,menubar)
 
         self.Tooltip_strings=_Tooltip_strings() # all the text for the tooltips are stored in a class
-
-        ###  getting image data ###
-        self.import_lights(lights_path)
-        self.data=self.lights[0] #inherited from calibration
-        self.header=self.headers[0] #same
 
         ### mouse positions [x,y] ###
         self.clicked=[0,0]
@@ -87,19 +83,8 @@ class image_identifier(calibration):
         self.doublevar_gamma=DoubleVar(self.GUI,value=1)
 
 
-        ### GUI elements and figure ###
-        self.GUI_Frame=Frame(GUI)
-        self.Image_Frame=Frame(self.GUI_Frame)
-        self.Elements_Frame=Frame(self.GUI_Frame)
-        self.menubar=menubar
-        self.figure=plt.figure(figsize=(20,12),dpi=100,frameon=True,constrained_layout=True)
-        self.axes=plt.axes()
-
+        # the actual plot, backend iherited from image_container
         im1=self.axes.imshow(self.data**-self.doublevar_gamma.get(),cmap="Greys")
-        self.canvas=FigureCanvasTkAgg(self.figure, self.Image_Frame)
-        self.canvas.get_tk_widget().grid(row=0,column=0)
-        self.figure.canvas.draw()
-        self.figure.canvas.flush_events() # pauses event loop until next event is triggered
 
         self.line_container=[]
         self.ellipse_container=[]
@@ -112,10 +97,6 @@ class image_identifier(calibration):
         # setup GUI
         self.init_GUI()
 
-        self.figure.canvas.mpl_connect('button_press_event', self.onclick)
-        self.figure.canvas.mpl_connect('button_release_event', self.onrelease)
-        self.figure.canvas.mpl_connect('motion_notify_event', self.mouse_moved)
-        self.figure.canvas.mpl_connect('scroll_event',self.mousewheel_moved)
 
     #only for test
     def hello(self):
@@ -554,6 +535,7 @@ class image_identifier(calibration):
         print("DEC entry in decimals is",self.stringvar_DEC.get())
         print("RA entry in decimals is",self.stringvar_RA.get())
 
+        #currently deactivated
         self.Checkbox_show_orientation=Checkbutton(Frame_find_coordinates,text="Show axes orientation",onvalue=1,offvalue=0,command=self.show_RA_DEC_orientation)
         self.Checkbox_show_orientation.select()
         self.show_RA_DEC_orientation() #do initial plot
