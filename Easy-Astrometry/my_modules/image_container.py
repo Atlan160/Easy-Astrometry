@@ -48,17 +48,20 @@ class image_container(calibration):
         super().__init__()
         self.GUI=GUI #TK interface
         ### GUI elements and figure ###
-        self.GUI_Frame=Frame(GUI)
+        self.GUI_Frame=Frame(self.GUI) #maybe better call it Master_frame_GUI
         self.Image_Frame=Frame(self.GUI_Frame)
         self.Elements_Frame=Frame(self.GUI_Frame)
         self.menubar=menubar
-        self.figure=plt.figure(figsize=(20,12),dpi=100,frameon=True,constrained_layout=True)
+        _dpi=120
+        screen_width = self.GUI.winfo_screenwidth()
+        screen_height = self.GUI.winfo_screenheight()
+        self.figure=plt.figure(figsize=(screen_width/_dpi,screen_height/_dpi),dpi=_dpi,frameon=False,tight_layout=False,constrained_layout=False)
         self.axes=plt.axes()
 
         ###  getting image data, inherited from calibration ###
         self.import_lights(lights_path)
-        self.data=self.lights[0] #inherited from calibration
-        self.header=self.headers[0] #same
+        self.generate_data()
+
 
 
         self.canvas=FigureCanvasTkAgg(self.figure, self.Image_Frame)

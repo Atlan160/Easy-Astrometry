@@ -36,7 +36,7 @@ class calibration:
         self.lights=[] #is imported
         self.headers=[] # is imported
         self.lights_path=""
-        self.data=[]
+        self.data_bin2=[]
 
 
     def print_hello(self):
@@ -56,6 +56,13 @@ class calibration:
         self.lights=_lights
         self.headers=_headers
         print("imported "+str(len(path))+" files")
+
+    def generate_data(self):
+
+        for i in range(len(self.lights)):
+            pass
+            #self.data_bin2.append(self.data_raw[::2,::2])
+
 
     def get_number_of_lights(self):
         return len(self.lights)

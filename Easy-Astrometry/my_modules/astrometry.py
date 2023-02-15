@@ -60,11 +60,13 @@ class astrometry(image_container):
         self.current_position=[0,0]
 
         ### image properties ###
+        self.header=self.headers[0] #import header of first image (only the first image is plotted)
+        self.data=self.lights[0].copy() #import data
         self.image_scale_arcsec_per_pixel=self.header["scale"]
 
         # the actual plot, backend iherited from image_container
         self.doublevar_gamma=DoubleVar(self.GUI,value=1)
-        im1=self.axes.imshow(self.data**-self.doublevar_gamma.get(),cmap="Greys")
+        im1=self.axes.imshow(self.data**-self.doublevar_gamma.get(),cmap="Greys",interpolation="none")
 
         self.perform_median_correction=True #irrelevant if dark_correction is true
         self.sigma=4.0
@@ -88,6 +90,8 @@ class astrometry(image_container):
         self.sources=self.find_sources(save_files=False) # stars in image
 
         self.init_GUI()
+        self.figure.canvas.draw()
+
         
 
 

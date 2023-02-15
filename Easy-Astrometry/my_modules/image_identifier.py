@@ -70,9 +70,13 @@ class image_identifier(image_container):
         self.show_orientation_state=True
         self.calibrate_magnitude_state=False
 
+
         ### image properties ###
+        self.header=self.headers[0] #import header of first image (only the first image is plotted)
+        self.data=self.lights[0].copy() #import data
         self.image_scale_arcsec_per_pixel=self.header["scale"]
         self.sources=self.find_stars() # stars in image
+
 
         ### Textvariables ###
         self.stringvar_RA=StringVar(self.GUI,value=0) #TODO why not use DoubleVar ?
@@ -84,7 +88,7 @@ class image_identifier(image_container):
 
 
         # the actual plot, backend iherited from image_container
-        im1=self.axes.imshow(self.data**-self.doublevar_gamma.get(),cmap="Greys")
+        im1=self.axes.imshow(self.data**-self.doublevar_gamma.get(),cmap="Greys",interpolation="none")
 
         self.line_container=[]
         self.ellipse_container=[]
@@ -124,9 +128,8 @@ class image_identifier(image_container):
         Args:
             x (float): [description]
             y (float): [description]
-            tol (int,float ): tolerance, possible distance of star to coordinates x,y. Defaults to 15.
+            tol (int,float ): tolerance in pixel, possible distance of star to coordinates x,y. Defaults to 15.
         """
-
 
 
         index=-1
@@ -230,7 +233,7 @@ class image_identifier(image_container):
 
         
         self.figure.canvas.draw()
-        self.figure.canvas.flush_events()
+        #self.figure.canvas.flush_events()
 
     def show_RA_DEC_orientation(self):
 
@@ -266,7 +269,7 @@ class image_identifier(image_container):
                 self.arrow_container.remove(self.arrow_container[-1])
 
         self.figure.canvas.draw()
-        self.figure.canvas.flush_events()
+        #self.figure.canvas.flush_events()
         
 
     def onrelease(self,event):
@@ -351,7 +354,7 @@ class image_identifier(image_container):
             self.text_container[-1].set_text("diameter in arcmin "+str(np.round(length_arcsec/60,6)))
             
         self.figure.canvas.draw()
-        self.figure.canvas.flush_events()
+        #self.figure.canvas.flush_events()
 
 
     def draw_line(self,x,y):
@@ -380,8 +383,8 @@ class image_identifier(image_container):
         text="RA: "+str(ra_h)+"h "+str(ra_min)+"min "+str(np.round(ra_sec,1))+"sec "+"DEC: "+str(dec_deg)+"° "+str(dec_min)+"min "+str(np.round(dec_sec,1))+"sec "
         self.text_container.append(self.axes.text(X+10,Y,text,color="orangered"))
         self.figure.canvas.draw()
-        self.figure.canvas.flush_events()
-        #self.figure.canvas.draw()
+        #self.figure.canvas.flush_events()
+
 
 
     def set_drawline(self):
@@ -398,7 +401,7 @@ class image_identifier(image_container):
         text="RA: "+str(ra_h)+"h "+str(ra_min)+"min "+str(np.round(ra_sec,1))+"sec "+"DEC: "+str(dec_deg)+"° "+str(dec_min)+"min "+str(np.round(dec_sec,1))+"sec "
         self.text_container.append(self.axes.text(x+10,y,text,color="springgreen"))
         self.figure.canvas.draw()
-        self.figure.canvas.flush_events()
+        #self.figure.canvas.flush_events()
 
     def set_drawcircle(self):
         self.draw_circle_state=True
@@ -410,7 +413,7 @@ class image_identifier(image_container):
         self.axes.add_patch(ellipse)
         self.text_container.append(self.axes.text(x,y,"",color="red"))
         self.figure.canvas.draw()
-        self.figure.canvas.flush_events()
+        #self.figure.canvas.flush_events()
 
     def show_magnitude(self):
         self.show_magnitude_state= not self.show_magnitude_state
@@ -430,7 +433,7 @@ class image_identifier(image_container):
                 self.text_magnitude_container.remove(self.text_magnitude_container[-1])
 
         self.figure.canvas.draw()
-        self.figure.canvas.flush_events()
+        #self.figure.canvas.flush_events()
 
 
     def invert_snap_on_stars(self):
@@ -456,7 +459,7 @@ class image_identifier(image_container):
             self.arrow_container.remove(self.arrow_container[-1])
 
         self.axes.clear()
-        self.axes.imshow(self.data**-self.doublevar_gamma.get(),cmap="Greys")
+        self.axes.imshow(self.data**-self.doublevar_gamma.get(),cmap="Greys",interpolation="none")
 
         self.Checkbox_show_magnitude.deselect()
         self.Checkbox_show_orientation.deselect()
@@ -464,7 +467,7 @@ class image_identifier(image_container):
         self.show_orientation_state=False
 
         self.figure.canvas.draw()
-        self.figure.canvas.flush_events()
+        #self.figure.canvas.flush_events()
 
     def set_calibrate_magnitude(self):
         self.calibrate_magnitude_state=True
@@ -478,11 +481,11 @@ class image_identifier(image_container):
 
     def update_gamma_value(self,event):
         #self.axes.clear()
-        self.axes.imshow(self.data**-self.doublevar_gamma.get(),cmap="Greys")
+        self.axes.imshow(self.data**-self.doublevar_gamma.get(),cmap="Greys",interpolation="none")
 
         print("new gamma value",self.doublevar_gamma.get())
         self.figure.canvas.draw()
-        self.figure.canvas.flush_events()
+        #self.figure.canvas.flush_events()
 
 
 
@@ -513,8 +516,8 @@ class image_identifier(image_container):
         snap_stars_checkbox=Checkbutton(Frame_drawing,text="snap on stars",onvalue=1, offvalue=0,command=self.invert_snap_on_stars)
         snap_stars_checkbox.deselect()
         snap_stars_checkbox.grid(row=2,column=1)
-        __=CreateToolTip(Frame_drawing, self.Tooltip_strings.tooltip_click_draw)
-        __=CreateToolTip(snap_stars_checkbox,self.Tooltip_strings.tooltip_snap_on_stars)
+        #__=CreateToolTip(Frame_drawing, self.Tooltip_strings.tooltip_click_draw)
+        #__=CreateToolTip(snap_stars_checkbox,self.Tooltip_strings.tooltip_snap_on_stars)
 
 
 
@@ -540,12 +543,12 @@ class image_identifier(image_container):
         self.Checkbox_show_orientation.select()
         self.show_RA_DEC_orientation() #do initial plot
         self.Checkbox_show_orientation.grid(row=4,column=0)
-        __=CreateToolTip(self.Checkbox_show_orientation, self.Tooltip_strings.tooltip_show_orientation)
+        #__=CreateToolTip(self.Checkbox_show_orientation, self.Tooltip_strings.tooltip_show_orientation)
         
 
         Frame_current_mouse_position=Frame(self.Elements_Frame,borderwidth=1,relief=RIDGE)
         Label_show_coords=Label(Frame_current_mouse_position,text="Current mouse coordinates",font=("Arial", 12))
-        Label_show_coords.grid(row=0,column=0)
+        Label_show_coords.grid(row=0,column=0,columnspan=2)
         Label_show_coords_RA=Label(Frame_current_mouse_position,textvariable=self.stringvar_current_coordinates_RA)
         Label_show_coords_RA.grid(row=1,column=0)
         Label_show_coords_DEC=Label(Frame_current_mouse_position,textvariable=self.stringvar_current_coordinates_DEC)
@@ -561,8 +564,8 @@ class image_identifier(image_container):
         self.Checkbox_show_magnitude=Checkbutton(Frame_calibrate_magnitude,text="show stars relative magnitude",onvalue=1, offvalue=0, command=self.show_magnitude)
         self.Checkbox_show_magnitude.deselect()
         self.Checkbox_show_magnitude.grid(row=2,column=0)
-        __=CreateToolTip(self.Checkbox_show_magnitude, self.Tooltip_strings.tooltip_show_stars_magnitude)
-        __=CreateToolTip(Button_calibrate_magnitude, self.Tooltip_strings.tooltip_calibrate_stars_magnitude)
+        #__=CreateToolTip(self.Checkbox_show_magnitude, self.Tooltip_strings.tooltip_show_stars_magnitude)
+        #__=CreateToolTip(Button_calibrate_magnitude, self.Tooltip_strings.tooltip_calibrate_stars_magnitude)
 
 
 
@@ -583,6 +586,7 @@ class image_identifier(image_container):
         self.Image_Frame.grid(row=0,column=1,sticky="NN")
 
         self.GUI_Frame.pack()
+
         
         # dont use this function otherwise program is traped in this mainloop
         #self.GUI.mainloop()
